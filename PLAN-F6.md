@@ -84,7 +84,10 @@ with an empty `meta` / `tokens` and behave exactly as before.
 - **F7 done** (`d596f1b`) — `formflow_ext/xml/richXml.ts`: XML attributes, `#text`,
   comments, `<?xml?>` declaration, N-item array seeding. Fixes findings 1–3.
   +8 web tests, E2E verified.
-- **F8–F12** — pending.
+- **F8 done** — `formflow_ext/tokens.ts`: `scanTokens` / `applyTokens` /
+  `pruneTokenValues`; `%…%`, `${…}`, `{{…}}`. DesignerPage "Tokens" section,
+  substitution on export, `tokenValues` persisted. +6 web tests, E2E verified.
+- **F9–F12** — pending.
 
 ## Phases
 

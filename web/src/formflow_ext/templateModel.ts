@@ -33,6 +33,8 @@ export interface StoredForm {
   values: Values
   meta: FieldMetaMap
   tokens: TokenSpec[]
+  /** Filled token values, keyed by the literal placeholder (`"%Name%"`). */
+  tokenValues: Record<string, string>
 }
 
 /** Tolerant decoder. Returns `null` when there's no usable `schema`. */
@@ -51,6 +53,7 @@ export function parseStoredForm(raw: string): StoredForm | null {
     values: isObject(rec.values) ? (rec.values as Values) : {},
     meta: isObject(rec.meta) ? (rec.meta as FieldMetaMap) : {},
     tokens: Array.isArray(rec.tokens) ? (rec.tokens as TokenSpec[]) : [],
+    tokenValues: isObject(rec.tokenValues) ? (rec.tokenValues as Record<string, string>) : {},
   }
 }
 
@@ -60,6 +63,7 @@ export function serializeStoredForm(f: StoredForm): string {
     values: f.values,
     meta: f.meta,
     tokens: f.tokens,
+    tokenValues: f.tokenValues,
   })
 }
 

@@ -83,6 +83,7 @@ describe('parseStoredForm', () => {
       values: { Name: 'x' },
       meta: { Name: { label: 'N' } },
       tokens: [{ token: '%N%', name: 'N', occurrences: ['Name'] }],
+      tokenValues: { '%N%': 'x' },
     })
     const got = parseStoredForm(raw)
     expect(got?.meta).toEqual({ Name: { label: 'N' } })

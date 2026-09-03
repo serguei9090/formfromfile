@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { FileDropField } from '@/app/FileDropField'
 import { FormFields, type FieldCtx } from '@/designer/FormFields'
 import { SchemaTree } from '@/designer/SchemaTree'
@@ -19,6 +20,7 @@ import {
 } from '@/core/form_flow/schemaModel'
 import { pruneMetaMap, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
 import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
+import { applyTokens, pruneTokenValues, scanTokens } from '@/formflow_ext/tokens'
 import { parseRichXml, renderRichXml } from '@/formflow_ext/xml/richXml'
 import { useSchemasStore } from '@/stores/schemasStore'
 
@@ -39,6 +41,7 @@ export function DesignerPage() {
   const [schema, setSchema] = useState<FormFlowSchema | null>(null)
   const [meta, setMeta] = useState<FieldMetaMap>({})
   const [tokens, setTokens] = useState<TokenSpec[]>([])
+  const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
   const [name, setName] = useState('')
   const [parseError, setParseError] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -57,6 +60,7 @@ export function DesignerPage() {
         setSchema(saved.schema)
         setMeta(saved.meta)
         setTokens(saved.tokens)
+        setTokenValues(saved.tokenValues)
         form.reset(saved.values)
         return
       }
@@ -65,6 +69,7 @@ export function DesignerPage() {
         setSchema(s)
         setMeta({})
         setTokens([])
+        setTokenValues({})
         form.reset(defaultValuesFromFields(s.fields))
       } catch (e) {
         setParseError(msg(e))
@@ -78,12 +83,14 @@ export function DesignerPage() {
       const s = parser.parse(source)
       // XML: re-parse with attributes + comments preserved (core drops them).
       const rich = s.format === 'xml' ? parseRichXml(source) : null
+      const seed = rich?.seed ?? defaultValuesFromFields(s.fields)
       setSchema(rich?.schema ?? s)
       setMeta({})
-      setTokens([])
+      setTokens(scanTokens(seed))
+      setTokenValues({})
       setParseError('')
       setOutput(null)
-      form.reset(rich?.seed ?? defaultValuesFromFields(s.fields))
+      form.reset(seed)
       if (!name) setName('Untitled form')
     } catch (e) {
       setParseError(msg(e))
@@ -95,8 +102,12 @@ export function DesignerPage() {
     setSchema((s) => {
       if (!s) return s
       const next = { ...s, fields: setFieldTypeAt(s.fields, path, type) }
-      form.reset(defaultValuesFromFields(next.fields))
+      const seed = defaultValuesFromFields(next.fields)
+      form.reset(seed)
       setMeta((m) => pruneMetaMap(m, next.fields))
+      const tk = scanTokens(seed)
+      setTokens(tk)
+      setTokenValues((tv) => pruneTokenValues(tv, tk))
       setOutput(null)
       return next
     })
@@ -105,11 +116,11 @@ export function DesignerPage() {
   function doExport() {
     if (!schema) return
     try {
-      const out =
+      const rendered =
         schema.format === 'xml'
           ? renderRichXml(schema, form.getValues(), source)
           : parser.render(schema, form.getValues())
-      setOutput(out)
+      setOutput(applyTokens(rendered, tokenValues))
     } catch (e) {
       setParseError(msg(e))
     }
@@ -134,7 +145,13 @@ export function DesignerPage() {
         name: name.trim() || 'Untitled form',
         kind: schema.format,
         body: source,
-        formJson: serializeStoredForm({ schema, values: form.getValues(), meta, tokens }),
+        formJson: serializeStoredForm({
+          schema,
+          values: form.getValues(),
+          meta,
+          tokens,
+          tokenValues,
+        }),
       }
       if (id) {
         await update(id, payload)
@@ -217,6 +234,7 @@ export function DesignerPage() {
                   setSchema(null)
                   setMeta({})
                   setTokens([])
+                  setTokenValues({})
                   setOutput(null)
                 }}
               >
@@ -230,6 +248,30 @@ export function DesignerPage() {
               <CardTitle>Form</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {tokens.length > 0 ? (
+                <fieldset className="space-y-2 rounded-md border border-primary/30 bg-primary/[0.03] p-3">
+                  <legend className="px-1 text-xs font-semibold text-primary">
+                    Tokens — substituted on export
+                  </legend>
+                  {tokens.map((t) => (
+                    <div key={t.token} className="space-y-1">
+                      <Label htmlFor={`tok-${t.token}`}>
+                        {t.name}{' '}
+                        <span className="font-normal text-muted-foreground">
+                          {t.token} · {t.occurrences.length}×
+                        </span>
+                      </Label>
+                      <Input
+                        id={`tok-${t.token}`}
+                        value={tokenValues[t.token] ?? ''}
+                        onChange={(e) =>
+                          setTokenValues((v) => ({ ...v, [t.token]: e.target.value }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </fieldset>
+              ) : null}
               <form>
                 <FormFields fields={schema.fields} prefix="" ctx={ctx} />
               </form>
