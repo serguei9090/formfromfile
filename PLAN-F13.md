@@ -78,7 +78,11 @@ update the note in F14.
   **"Submit another"** step after sending. `PublicFillPage` header gets a theme
   toggle. **Deferred:** zip download + QR share dialog (need libs), "new since
   last visit" marker.
-- **F18** — pending.
+- **F18 done** (partial) — `data/samples.ts` (Tool XML, k8s YAML, `.env`,
+  `pyproject.toml`); empty "My Forms" shows the supported-format list + sample
+  cards; `?sample=<id>` loads + auto-detects in the designer; a dismissible
+  first-run tip (localStorage); MIT / InfraKit-lineage / source footer in
+  `Shell`. **Deferred:** README screenshots/GIF (needs a running capture).
 
 ## Phases
 

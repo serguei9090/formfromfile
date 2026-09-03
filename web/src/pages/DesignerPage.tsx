@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Copy, Download, FileSearch, Save } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ import {
   renderTemplate,
 } from '@/formflow_ext/formats'
 import { importJsonSchema, looksLikeJsonSchema } from '@/formflow_ext/importers/jsonSchema'
+import { sampleById } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
 
 type Values = Record<string, unknown>
@@ -37,6 +38,7 @@ const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 export function DesignerPage() {
   const { id } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const create = useSchemasStore((s) => s.create)
   const update = useSchemasStore((s) => s.update)
@@ -55,6 +57,21 @@ export function DesignerPage() {
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
   const [preview, setPreview] = useState(false)
+  const [tipHidden, setTipHidden] = useState(() => {
+    try {
+      return localStorage.getItem('fff:tip:designer') === '1'
+    } catch {
+      return false
+    }
+  })
+  function dismissTip() {
+    setTipHidden(true)
+    try {
+      localStorage.setItem('fff:tip:designer', '1')
+    } catch {
+      /* ignore */
+    }
+  }
 
   const form = useForm<Values>({ defaultValues: {} })
 
@@ -88,20 +105,33 @@ export function DesignerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  function detect() {
+  // ?sample=<id> — load a starter file and detect it right away
+  useEffect(() => {
+    if (id) return
+    const s = sampleById(searchParams.get('sample'))
+    if (!s) return
+    setSource(s.body)
+    setName(s.name)
+    setSearchParams({}, { replace: true })
+    // detect on the next tick so `source` state is in place
+    setTimeout(() => detectFrom(s.body), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function detectFrom(text: string) {
     try {
       let detected: FormFlowSchema
       let seed: Values
       let nextMeta: FieldMetaMap
 
-      if (looksLikeJsonSchema(source)) {
-        const imported = importJsonSchema(source)
+      if (looksLikeJsonSchema(text)) {
+        const imported = importJsonSchema(text)
         detected = imported.schema
         nextMeta = imported.meta
         seed = defaultValuesFromFields(detected.fields)
         setFormatId('json')
       } else {
-        const p = parseSource(source)
+        const p = parseSource(text)
         detected = p.schema
         seed = p.seed
         nextMeta = autoMetaFromSchema(detected)
@@ -121,6 +151,8 @@ export function DesignerPage() {
       setSchema(null)
     }
   }
+
+  const detect = () => detectFrom(source)
 
   function retype(path: number[], type: FieldType) {
     setSchema((s) => {
@@ -233,6 +265,20 @@ export function DesignerPage() {
         ) : null}
       </div>
       {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
+
+      {schema && !tipHidden ? (
+        <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/[0.04] p-3 text-xs">
+          <span>
+            Open <span className="text-primary">⚙</span> on any field for a label, help text and
+            validation. Flip to <span className="font-medium">Fill preview</span> to see what the
+            filler gets. <span className="font-medium">Save</span>, then{' '}
+            <span className="font-medium">Publish</span> to share a link.
+          </span>
+          <button className="ml-auto shrink-0 underline" onClick={dismissTip}>
+            Got it
+          </button>
+        </div>
+      ) : null}
 
       {!schema ? (
         <Card>

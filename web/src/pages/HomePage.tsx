@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { useState } from 'react'
 import { Check, FilePlus2, Link2, PencilLine, SquarePen, Trash2 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { SAMPLES } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
 
 export function HomePage() {
@@ -60,9 +60,33 @@ export function HomePage() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : list.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          No saved forms yet. Open the designer and save one.
-        </Card>
+        <div className="space-y-4">
+          <Card className="p-6 text-sm text-muted-foreground">
+            No saved forms yet. Drop an <span className="font-medium">XML · YAML · JSON · TOML ·
+            INI · .env · CSV</span> file (or a JSON Schema) in the{' '}
+            <Link to="/designer" className="text-primary underline">
+              designer
+            </Link>
+            , or start from a sample:
+          </Card>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {SAMPLES.map((sample) => (
+              <Link
+                key={sample.id}
+                to={`/designer?sample=${sample.id}`}
+                className="rounded-lg border border-border p-3 transition-colors hover:border-primary/50 hover:bg-accent"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{sample.name}</span>
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+                    {sample.kind}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{sample.blurb}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="grid gap-2">
           {list.map((s) => (

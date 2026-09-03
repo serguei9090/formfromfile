@@ -51,6 +51,17 @@ export function Shell() {
       <main className="mx-auto w-full max-w-5xl flex-1 p-6">
         <Outlet />
       </main>
+      <footer className="border-t border-border/60 px-5 py-3 text-center text-xs text-muted-foreground">
+        FormFromFile · MIT · spun out of InfraKit Studio's FormFlow ·{' '}
+        <a
+          href="https://github.com/serguei9090/formfromfile"
+          className="underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          source
+        </a>
+      </footer>
     </div>
   )
 }
