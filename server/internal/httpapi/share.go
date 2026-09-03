@@ -26,6 +26,19 @@ func (h *handlers) listSubmissions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"submissions": subs})
 }
 
+func (h *handlers) deleteSubmission(w http.ResponseWriter, r *http.Request) {
+	err := h.opts.Store.DeleteSubmission(currentUser(r).ID, chi.URLParam(r, "id"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "submission not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 func (h *handlers) getSubmission(w http.ResponseWriter, r *http.Request) {
 	sub, err := h.opts.Store.GetSubmission(currentUser(r).ID, chi.URLParam(r, "id"))
 	if errors.Is(err, store.ErrNotFound) {

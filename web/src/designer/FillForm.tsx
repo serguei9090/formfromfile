@@ -6,11 +6,38 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { FormTemplate } from '@/formflow_ext/templateModel'
 import { applyTokens } from '@/formflow_ext/tokens'
+import { walkPaths } from '@/formflow_ext/fieldMeta'
 import { errorMessageAt, makeResolver } from '@/formflow_ext/validation'
 import { extensionFor, renderTemplate } from '@/formflow_ext/formats'
 import { FormFields, type FieldCtx } from './FormFields'
 
 type Values = Record<string, unknown>
+
+function loadDraft(key: string | undefined): { values?: Values; tokenValues?: Record<string, string> } | null {
+  if (!key) return null
+  try {
+    const raw = localStorage.getItem(`fff:draft:${key}`)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+function saveDraft(key: string | undefined, values: Values, tokenValues: Record<string, string>) {
+  if (!key) return
+  try {
+    localStorage.setItem(`fff:draft:${key}`, JSON.stringify({ values, tokenValues }))
+  } catch {
+    /* private mode / quota — ignore */
+  }
+}
+function clearDraft(key: string | undefined) {
+  if (!key) return
+  try {
+    localStorage.removeItem(`fff:draft:${key}`)
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * The fill-only view: no schema tree, no type controls. Validation from the
@@ -22,6 +49,7 @@ export function FillForm({
   source,
   initialValues,
   initialTokenValues = {},
+  draftKey,
   onSubmit,
 }: {
   template: FormTemplate
@@ -29,6 +57,8 @@ export function FillForm({
   source: string
   initialValues: Values
   initialTokenValues?: Record<string, string>
+  /** localStorage draft namespace, e.g. `fill:<id>` / `f:<slug>`. */
+  draftKey?: string
   /** When set, a "Send to team" button POSTs the filled result. */
   onSubmit?: (args: { values: Values; output: string; submitter: string }) => Promise<void>
 }) {
@@ -37,8 +67,13 @@ export function FillForm({
     () => makeResolver(schema, meta) as unknown as Resolver<Values>,
     [schema, meta],
   )
-  const form = useForm<Values>({ defaultValues: initialValues, resolver, mode: 'onChange' })
-  const [tokenValues, setTokenValues] = useState(initialTokenValues)
+  const draft = useMemo(() => loadDraft(draftKey), [draftKey])
+  const form = useForm<Values>({
+    defaultValues: draft?.values ?? initialValues,
+    resolver,
+    mode: 'onChange',
+  })
+  const [tokenValues, setTokenValues] = useState(draft?.tokenValues ?? initialTokenValues)
   const [output, setOutput] = useState<string | null>(null)
   const [submitter, setSubmitter] = useState('')
   const [sent, setSent] = useState(false)
@@ -51,6 +86,25 @@ export function FillForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // autosave a draft on every change
+  useEffect(() => {
+    if (!draftKey) return
+    const sub = form.watch((values) => saveDraft(draftKey, values as Values, tokenValues))
+    return () => sub.unsubscribe()
+  }, [form, draftKey, tokenValues])
+
+  // required-field progress
+  const requiredPaths = useMemo(
+    () => walkPaths(schema.fields).filter((p) => meta[p]?.required),
+    [schema, meta],
+  )
+  const watched = form.watch()
+  const requiredDone = requiredPaths.filter((p) => {
+    const v = p.split('.').reduce<unknown>((o, k) => (o as Values)?.[k], watched)
+    return v != null && String(v).trim() !== ''
+  }).length
+  const requiredTotal = requiredPaths.length + tokens.length
+
   const errors = form.formState.errors
   const ctx: FieldCtx = {
     control: form.control,
@@ -62,6 +116,7 @@ export function FillForm({
 
   const missingTokens = tokens.filter((t) => !(tokenValues[t.token] ?? '').trim())
   const canExport = form.formState.isValid && missingTokens.length === 0
+  const done = requiredDone + (tokens.length - missingTokens.length)
 
   async function doExport() {
     const ok = await form.trigger()
@@ -105,9 +160,9 @@ export function FillForm({
         <Button variant="outline" onClick={() => void doExport()} disabled={!canExport}>
           <Download className="size-4" /> Export
         </Button>
-        {!canExport ? (
+        {requiredTotal > 0 ? (
           <span className="text-xs text-muted-foreground">
-            Fill every required field to export.
+            {done} of {requiredTotal} required {done === requiredTotal ? '✓' : 'done'}
           </span>
         ) : null}
       </div>
@@ -115,7 +170,23 @@ export function FillForm({
       {output != null && onSubmit ? (
         <div className="space-y-2 rounded-md border border-border/60 p-3">
           {sent ? (
-            <p className="text-sm text-primary">Sent to the team. Thank you!</p>
+            <div className="space-y-2 text-sm">
+              <p className="text-primary">Sent to the team. Thank you!</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  clearDraft(draftKey)
+                  form.reset(initialValues)
+                  setTokenValues(initialTokenValues)
+                  setOutput(null)
+                  setSent(false)
+                  setSubmitter('')
+                }}
+              >
+                Submit another
+              </Button>
+            </div>
           ) : (
             <>
               <Label htmlFor="submitter">Your name or email (optional)</Label>
@@ -136,6 +207,7 @@ export function FillForm({
                   setSendError('')
                   try {
                     await onSubmit({ values: form.getValues(), output, submitter })
+                    clearDraft(draftKey)
                     setSent(true)
                   } catch (e) {
                     setSendError(e instanceof Error ? e.message : String(e))

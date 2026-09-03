@@ -62,6 +62,7 @@ func Router(opts Options) http.Handler {
 			r.Post("/schemas/{id}/unpublish", h.unpublishSchema)
 			r.Get("/schemas/{id}/submissions", h.listSubmissions)
 			r.Get("/submissions/{id}", h.getSubmission)
+			r.Delete("/submissions/{id}", h.deleteSubmission)
 		})
 
 		r.Group(func(r chi.Router) {

@@ -116,6 +116,16 @@ func TestSchemaLifecycleAndPublicShare(t *testing.T) {
 	if len(subs) != 1 || subs[0].(map[string]any)["submitter"] != "Bob" {
 		t.Fatalf("bad submissions %v", subs)
 	}
+	subID := subs[0].(map[string]any)["id"].(string)
+
+	// delete it
+	if res, _ := e.do(t, owner, "DELETE", "/api/submissions/"+subID, nil); res.StatusCode != http.StatusOK {
+		t.Fatalf("delete submission: %d", res.StatusCode)
+	}
+	res, out = e.do(t, owner, "GET", "/api/schemas/"+id+"/submissions", nil)
+	if len(out["submissions"].([]any)) != 0 {
+		t.Fatalf("submission not deleted: %v", out)
+	}
 
 	// unpublish → public 404
 	e.do(t, owner, "POST", "/api/schemas/"+id+"/unpublish", nil)

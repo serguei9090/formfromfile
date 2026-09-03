@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
+import { Moon, Sun } from 'lucide-react'
 import { api, ApiError } from '@/api/client'
 import type { PublicTemplate } from '@/api/types'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Leaf } from '@/app/Leaf'
-import { useApplyTheme } from '@/stores/themeStore'
+import { useApplyTheme, useThemeStore } from '@/stores/themeStore'
 import { FillForm } from '@/designer/FillForm'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, type FormTemplate } from '@/formflow_ext/templateModel'
@@ -21,6 +23,8 @@ type Loaded = {
 /** Unauthenticated share route: `/f/:slug`. No Shell / AuthGate. */
 export function PublicFillPage() {
   useApplyTheme()
+  const theme = useThemeStore((s) => s.theme)
+  const toggleTheme = useThemeStore((s) => s.toggle)
   const { slug } = useParams()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
@@ -70,6 +74,15 @@ export function PublicFillPage() {
       <div className="mb-6 flex items-center gap-2">
         <Leaf className="size-6" />
         <span className="font-semibold">FormFromFile</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </Button>
       </div>
       {error ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">{error}</Card>
@@ -86,6 +99,7 @@ export function PublicFillPage() {
               source={loaded.source}
               initialValues={loaded.values}
               initialTokenValues={loaded.tokenValues}
+              draftKey={`f:${slug}`}
               onSubmit={async ({ values, output, submitter }) => {
                 await api.post(`/public/templates/${slug}/submissions`, {
                   submitter,

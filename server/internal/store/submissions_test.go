@@ -84,4 +84,14 @@ func TestSubmissionsScoped(t *testing.T) {
 	if err != nil || full.Output != "<a>1</a>" || full.Submitter != "Alice" {
 		t.Fatalf("owner get: %v %+v", err, full)
 	}
+
+	if err := st.DeleteSubmission("u2", anon.ID); err != ErrNotFound {
+		t.Errorf("cross-user delete → %v", err)
+	}
+	if err := st.DeleteSubmission("u1", anon.ID); err != nil {
+		t.Fatalf("owner delete: %v", err)
+	}
+	if _, err := st.GetSubmission("u1", anon.ID); err != ErrNotFound {
+		t.Errorf("after delete → %v", err)
+	}
 }

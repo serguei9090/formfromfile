@@ -86,6 +86,7 @@ export function FillPage() {
             source={loaded.source}
             initialValues={loaded.values}
             initialTokenValues={loaded.tokenValues}
+            draftKey={`fill:${id}`}
           />
         </CardContent>
       </Card>

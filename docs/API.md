@@ -76,6 +76,9 @@ Back to `private` (slug retained). `200 → { "schema": SchemaRecord }` · `404`
 `200 → { "submission": SubmissionRecord }` (with blobs) · `404` missing or the
 template isn't yours.
 
+### `DELETE /api/submissions/{id}`
+`200 → { "ok": true }` · `404` missing or the template isn't yours.
+
 ---
 
 ## Public share (no auth)

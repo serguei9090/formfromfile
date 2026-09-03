@@ -67,6 +67,20 @@ func (s *Store) ListSubmissions(userID, templateID string) ([]Submission, error)
 	return out, rows.Err()
 }
 
+// DeleteSubmission removes a submission if the caller owns its template.
+func (s *Store) DeleteSubmission(userID, id string) error {
+	res, err := s.DB.Exec(
+		`DELETE FROM submissions
+		 WHERE id = ? AND template_id IN (SELECT id FROM schemas WHERE user_id = ?)`, id, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // GetSubmission returns one submission (with blobs) if the caller owns its
 // template.
 func (s *Store) GetSubmission(userID, id string) (*Submission, error) {

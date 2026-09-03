@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
 import type { SubmissionRecord, SubmissionSummary } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+function flatten(obj: unknown, prefix = '', out: Record<string, string> = {}): Record<string, string> {
+  if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+    for (const [k, v] of Object.entries(obj)) flatten(v, prefix ? `${prefix}.${k}` : k, out)
+  } else if (Array.isArray(obj)) {
+    obj.forEach((v, i) => flatten(v, `${prefix}[${i}]`, out))
+  } else {
+    out[prefix] = obj == null ? '' : String(obj)
+  }
+  return out
+}
+
+function csvCell(s: string): string {
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
 
 export function SubmissionsPage() {
   const { id } = useParams()
@@ -31,6 +46,59 @@ export function SubmissionsPage() {
     }
   }
 
+  async function del(sid: string) {
+    if (!confirm('Delete this submission?')) return
+    try {
+      await api.del(`/submissions/${sid}`)
+      setList((l) => (l ? l.filter((s) => s.id !== sid) : l))
+      if (open?.id === sid) setOpen(null)
+    } catch (e) {
+      setError(msg(e))
+    }
+  }
+
+  async function exportCsv() {
+    if (!list || list.length === 0) return
+    try {
+      const full = await Promise.all(
+        list.map((s) => api.get<{ submission: SubmissionRecord }>(`/submissions/${s.id}`)),
+      )
+      const rows = full.map((r) => r.submission)
+      const valueKeys = new Set<string>()
+      const flat = rows.map((r) => {
+        let parsed: unknown = {}
+        try {
+          parsed = JSON.parse(r.valuesJson || '{}')
+        } catch {
+          /* ignore */
+        }
+        const f = flatten(parsed)
+        Object.keys(f).forEach((k) => valueKeys.add(k))
+        return f
+      })
+      const cols = ['submitter', 'createdAt', ...[...valueKeys].sort()]
+      const lines = [cols.map(csvCell).join(',')]
+      rows.forEach((r, i) => {
+        lines.push(
+          [
+            r.submitter || 'Anonymous',
+            new Date(r.createdAt).toISOString(),
+            ...[...valueKeys].sort().map((k) => flat[i][k] ?? ''),
+          ]
+            .map((c) => csvCell(String(c)))
+            .join(','),
+        )
+      })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }))
+      a.download = `submissions-${id}.csv`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch (e) {
+      setError(msg(e))
+    }
+  }
+
   function download(s: SubmissionRecord) {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([s.output], { type: 'text/plain' }))
@@ -46,6 +114,11 @@ export function SubmissionsPage() {
           <ArrowLeft className="size-4" />
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Submissions</h1>
+        {list && list.length > 0 ? (
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => void exportCsv()}>
+            <Download className="size-4" /> Export CSV
+          </Button>
+        ) : null}
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
@@ -67,6 +140,14 @@ export function SubmissionsPage() {
               </div>
               <Button variant="outline" size="sm" onClick={() => void view(s.id)}>
                 View
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Delete submission"
+                onClick={() => void del(s.id)}
+              >
+                <Trash2 className="size-4" />
               </Button>
             </Card>
           ))}

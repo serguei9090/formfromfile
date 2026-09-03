@@ -70,7 +70,15 @@ update the note in F14.
   preview** toggle on `DesignerPage` renders `<FillForm>` against the current
   unsaved schema/meta/tokens. `CLAUDE.md` rough-edges note corrected.
   **Deferred:** per-token `FieldMeta`, array reorder, source-default display.
-- **F15, F18** — pending.
+- **F15 done** (partial) — `DELETE /api/submissions/{id}` (store + route +
+  tests); `SubmissionsPage` gets a delete button + **Export CSV** (flattens
+  each submission's `valuesJson`, union of keys as columns). `FillForm`:
+  localStorage **draft autosave** (`draftKey` per template/slug, restored on
+  load, cleared on submit), a **"N of M required done"** progress line, and a
+  **"Submit another"** step after sending. `PublicFillPage` header gets a theme
+  toggle. **Deferred:** zip download + QR share dialog (need libs), "new since
+  last visit" marker.
+- **F18** — pending.
 
 ## Phases
 
