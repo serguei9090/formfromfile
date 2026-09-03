@@ -5,7 +5,9 @@
  *
  * Supported: object/array/string/number/integer/boolean, nested, `properties`,
  * `items`, `required`, `enum`, `pattern`, `minimum`, `maximum`, `description`,
- * `title`, `default`. `$ref`, `allOf`/`oneOf`, tuple `items` are not resolved.
+ * `title`, `default`; local `$ref` (`#/$defs/…`, `#/definitions/…`), `allOf`
+ * (merged), `oneOf`/`anyOf` of `const`s (→ enum). Tuple `items` and remote
+ * `$ref` are not resolved.
  */
 import type { FieldType, FormFlowSchema, SchemaField } from '@/core/form_flow/schemaModel'
 import { childPath, setMetaAt, type FieldMetaMap } from '../fieldMeta'
@@ -23,6 +25,40 @@ interface JsonSchemaNode {
   description?: string
   default?: unknown
   $schema?: string
+  $ref?: string
+  $defs?: Record<string, JsonSchemaNode>
+  definitions?: Record<string, JsonSchemaNode>
+  allOf?: JsonSchemaNode[]
+  oneOf?: JsonSchemaNode[]
+  anyOf?: JsonSchemaNode[]
+  const?: unknown
+}
+
+/** Resolve local `$ref` / merge `allOf` / collapse `oneOf|anyOf` of consts. */
+function resolve(node: JsonSchemaNode, root: JsonSchemaNode, seen = new Set<string>()): JsonSchemaNode {
+  if (node.$ref && node.$ref.startsWith('#/') && !seen.has(node.$ref)) {
+    seen.add(node.$ref)
+    const parts = node.$ref.slice(2).split('/')
+    let target: unknown = root
+    for (const p of parts) target = (target as Record<string, unknown>)?.[p]
+    if (target && typeof target === 'object') return resolve(target as JsonSchemaNode, root, seen)
+  }
+  if (node.allOf) {
+    const merged: JsonSchemaNode = { type: 'object', properties: {}, required: [] }
+    for (const sub of node.allOf) {
+      const r = resolve(sub, root, seen)
+      Object.assign(merged.properties!, r.properties)
+      merged.required!.push(...(r.required ?? []))
+      merged.title ??= r.title
+      merged.description ??= r.description
+    }
+    return merged
+  }
+  const choice = node.oneOf ?? node.anyOf
+  if (choice && choice.every((c) => 'const' in c)) {
+    return { ...node, enum: choice.map((c) => c.const) }
+  }
+  return node
 }
 
 export function looksLikeJsonSchema(raw: string): boolean {
@@ -44,11 +80,12 @@ export interface ImportedSchema {
 }
 
 export function importJsonSchema(raw: string): ImportedSchema {
-  const root = JSON.parse(raw) as JsonSchemaNode
+  const rawRoot = JSON.parse(raw) as JsonSchemaNode
+  const root = resolve(rawRoot, rawRoot)
   if (nodeType(root) !== 'object' || !root.properties) {
     throw new Error('JSON Schema root must be an object with properties')
   }
-  const built = objectFields(root, '', {})
+  const built = objectFields(root, '', {}, rawRoot)
   return {
     schema: { format: 'json', rootName: root.title ?? 'root', fields: built.fields },
     meta: built.meta,
@@ -60,12 +97,18 @@ interface Built {
   meta: FieldMetaMap
 }
 
-function objectFields(node: JsonSchemaNode, prefix: string, meta: FieldMetaMap): Built {
+function objectFields(
+  node: JsonSchemaNode,
+  prefix: string,
+  meta: FieldMetaMap,
+  docRoot: JsonSchemaNode,
+): Built {
   const required = new Set(node.required ?? [])
   const fields: SchemaField[] = []
   let m = meta
 
-  for (const [key, child] of Object.entries(node.properties ?? {})) {
+  for (const [key, rawChild] of Object.entries(node.properties ?? {})) {
+    const child = resolve(rawChild, docRoot)
     const path = childPath(prefix, key)
     const t = nodeType(child)
 
@@ -81,13 +124,13 @@ function objectFields(node: JsonSchemaNode, prefix: string, meta: FieldMetaMap):
     if (Object.keys(patch).length > 0) m = setMetaAt(m, path, patch)
 
     if (t === 'object') {
-      const sub = objectFields(child, path, m)
+      const sub = objectFields(child, path, m, docRoot)
       m = sub.meta
       fields.push({ key, type: 'object', children: sub.fields })
     } else if (t === 'array') {
-      const items = child.items ?? {}
+      const items = resolve(child.items ?? {}, docRoot)
       if (nodeType(items) === 'object') {
-        const sub = objectFields(items, path, m)
+        const sub = objectFields(items, path, m, docRoot)
         m = sub.meta
         fields.push({ key, type: 'array', children: sub.fields })
       } else {

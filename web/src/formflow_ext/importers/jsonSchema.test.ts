@@ -41,6 +41,32 @@ describe('importJsonSchema', () => {
     expect(byKey.ftp.children[0].key).toBe('host')
   })
 
+  it('resolves local $ref and merges allOf', () => {
+    const doc = JSON.stringify({
+      type: 'object',
+      $defs: { Addr: { type: 'object', properties: { host: { type: 'string' } } } },
+      allOf: [
+        { properties: { name: { type: 'string' } }, required: ['name'] },
+        { properties: { addr: { $ref: '#/$defs/Addr' } } },
+      ],
+      properties: {},
+    })
+    const { schema: s2, meta: m2 } = importJsonSchema(doc)
+    const keys = s2.fields.map((f) => f.key)
+    expect(keys).toContain('name')
+    expect(keys).toContain('addr')
+    expect(s2.fields.find((f) => f.key === 'addr')!.children[0].key).toBe('host')
+    expect(m2.name).toMatchObject({ required: true })
+  })
+
+  it('collapses oneOf of consts to an enum', () => {
+    const doc = JSON.stringify({
+      type: 'object',
+      properties: { mode: { oneOf: [{ const: 'a' }, { const: 'b' }] } },
+    })
+    expect(importJsonSchema(doc).meta.mode).toMatchObject({ enumValues: ['a', 'b'] })
+  })
+
   it('carries required / pattern / min-max / enum / integer into FieldMeta', () => {
     expect(meta.name).toMatchObject({ label: 'Tool name', required: true, pattern: '^[A-Z]+$' })
     expect(meta.port).toMatchObject({ required: true, min: 1, max: 65535, numberFormat: 'integer' })

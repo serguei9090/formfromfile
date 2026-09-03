@@ -11,6 +11,7 @@ import {
   type SchemaField,
 } from '@/core/form_flow/schemaModel'
 import { childPath, metaAt, type FieldMeta, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
+import { evalComputed, evalCond } from '@/formflow_ext/rules'
 import { isStructuralKey } from '@/formflow_ext/xml/richXml'
 
 type Values = Record<string, unknown>
@@ -21,8 +22,12 @@ export interface FieldCtx {
   reg: (name: string, opts?: RegisterOptions) => UseFormRegisterReturn
   /** Authoring metadata, keyed by dotted field path. */
   meta?: FieldMetaMap
+  /** Current form values — for conditional visibility + computed fields. */
+  values?: Values
   /** rhf-style flat error lookup by field name (F10). */
   errorFor?: (name: string) => string | undefined
+  /** On blur of a field that has `meta.checkUrl` — run the async check. */
+  onBlurCheck?: (name: string, metaPath: string, value: string) => void
   /** Hide fields the author marked non-editable (filler view). */
   hideLocked?: boolean
 }
@@ -46,6 +51,7 @@ export function FormFields({
           const mPath = childPath(metaPrefix, f.key)
           const m = metaAt(ctx.meta ?? {}, mPath)
           if (ctx.hideLocked && m.editable === false && f.children.length === 0) return null
+          if (m.visibleWhen && !evalCond(m.visibleWhen, ctx.values ?? {})) return null
           return (
             <FieldRow
               key={f.key}
@@ -120,11 +126,23 @@ function FieldRow({
     )
   }
 
+  if (m.computed) {
+    return (
+      <div className="space-y-1">
+        <Label>
+          {labelText(field, m)} <span className="text-muted-foreground">(computed)</span>
+          <Help text={m.help} />
+        </Label>
+        <Input value={evalComputed(m.computed, ctx.values ?? {})} readOnly disabled />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-1">
       <Label htmlFor={name}>
         {labelText(field, m)}
-        {m.required ? <span className="text-destructive"> *</span> : null}
+        {(m.required || m.requiredWhen) ? <span className="text-destructive"> *</span> : null}
         <Help text={m.help} />
       </Label>
       {m.enumValues && m.enumValues.length > 0 ? (
@@ -147,6 +165,10 @@ function FieldRow({
           inputMode={field.type === 'number' ? 'decimal' : undefined}
           type="text"
           {...ctx.reg(name)}
+          onBlur={(e) => {
+            ctx.reg(name).onBlur(e)
+            if (m.checkUrl) ctx.onBlurCheck?.(name, metaPath, e.target.value)
+          }}
         />
       )}
       {err ? (

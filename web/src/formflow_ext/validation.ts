@@ -15,6 +15,7 @@ import {
 import { childPath, metaAt, type FieldMeta, type FieldMetaMap } from './fieldMeta'
 import { isStructuralKey } from './xml/richXml'
 import { presetById } from './presets'
+import { evalCond, failingRules, type Rule } from './rules'
 
 export interface FieldError {
   /** rhf field name (dotted, array items indexed). */
@@ -28,9 +29,13 @@ export function collectErrors(
   schema: FormFlowSchema,
   meta: FieldMetaMap,
   values: Values,
+  rules?: Rule[],
 ): FieldError[] {
   const errors: FieldError[] = []
-  walk(schema.fields, '', '', values, meta, errors)
+  walk(schema.fields, '', '', values, values, meta, errors)
+  for (const r of failingRules(rules, values)) {
+    errors.push({ name: `__rule_${r.id}`, message: r.message })
+  }
   return errors
 }
 
@@ -39,6 +44,7 @@ function walk(
   namePrefix: string,
   metaPrefix: string,
   value: unknown,
+  root: Values,
   meta: FieldMetaMap,
   out: FieldError[],
 ): void {
@@ -50,8 +56,11 @@ function walk(
     const fm = metaAt(meta, mPath)
     const v = obj[f.key]
 
+    // hidden by visibleWhen → nothing to validate under here
+    if (fm.visibleWhen && !evalCond(fm.visibleWhen, root)) continue
+
     if (f.type === 'object') {
-      walk(f.children, name, mPath, v, meta, out)
+      walk(f.children, name, mPath, v, root, meta, out)
       continue
     }
     if (f.type === 'array') {
@@ -59,23 +68,31 @@ function walk(
       const scalar = isScalarArrayTemplate(f.children)
       items.forEach((item, i) => {
         if (scalar) {
-          checkLeaf(`${name}.${i}.value`, f.children[0], metaAt(meta, childPath(mPath, 'value')), unwrapScalar(item), out)
+          checkLeaf(`${name}.${i}.value`, f.children[0], metaAt(meta, childPath(mPath, 'value')), unwrapScalar(item), root, out)
         } else {
-          walk(f.children, `${name}.${i}`, mPath, item, meta, out)
+          walk(f.children, `${name}.${i}`, mPath, item, root, meta, out)
         }
       })
       continue
     }
-    checkLeaf(name, f, fm, v, out)
+    checkLeaf(name, f, fm, v, root, out)
   }
 }
 
-function checkLeaf(name: string, field: SchemaField, m: FieldMeta, raw: unknown, out: FieldError[]): void {
-  if (m.editable === false) return
+function checkLeaf(
+  name: string,
+  field: SchemaField,
+  m: FieldMeta,
+  raw: unknown,
+  root: Values,
+  out: FieldError[],
+): void {
+  if (m.editable === false || m.computed) return
   const text = raw == null ? '' : String(raw)
   const empty = text.trim() === ''
 
-  if (m.required && empty) {
+  const required = m.required || (m.requiredWhen ? evalCond(m.requiredWhen, root) : false)
+  if (required && empty) {
     out.push({ name, message: `${m.label ?? field.key} is required` })
     return
   }
@@ -139,9 +156,9 @@ export interface ResolverResult {
  * rhf-compatible resolver: `{ values, errors }` with `errors` in the nested rhf
  * shape. Cast to `Resolver` at the `useForm` call site.
  */
-export function makeResolver(schema: FormFlowSchema, meta: FieldMetaMap) {
+export function makeResolver(schema: FormFlowSchema, meta: FieldMetaMap, rules?: Rule[]) {
   return async (values: Values): Promise<ResolverResult> => {
-    const flat = collectErrors(schema, meta, values)
+    const flat = collectErrors(schema, meta, values, rules)
     if (flat.length === 0) return { values, errors: {} }
     const errors: Record<string, unknown> = {}
     for (const e of flat) {

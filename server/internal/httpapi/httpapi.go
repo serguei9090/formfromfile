@@ -50,6 +50,7 @@ func Router(opts Options) http.Handler {
 		// Public: fill a shared template by slug. No auth.
 		r.Get("/public/templates/{slug}", h.publicTemplateBySlug)
 		r.Post("/public/templates/{slug}/submissions", h.createPublicSubmission)
+		r.Post("/public/templates/{slug}/check", h.validateProxy)
 
 		r.Group(func(r chi.Router) {
 			r.Use(h.requireAuth)

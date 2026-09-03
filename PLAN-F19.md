@@ -56,7 +56,18 @@ needed). F27 stays parked.
   inputs + history panel with rollback; HomePage search + folder/tag chips +
   fork + draft/published badge; SubmissionsPage status badges + approve/reject
   + the approval-gate toggle. +go tests, E2E verified.
-- **F22–F26** — in progress (F24 deferred, F27 parked).
+- **F22 done** — `formflow_ext/rules.ts`: structured `Cond` (leaf `{path,op,value}`
+  + `all`/`any`), `evalCond` (no `eval`), `failingRules`, `evalComputed` /
+  `withComputed`. `FieldMeta` gains `visibleWhen` / `requiredWhen` / `computed`
+  / `checkUrl`; `FormTemplate.rules`. FormFields hides `visibleWhen`-false
+  fields, renders `computed` read-only; `validation` skips hidden fields,
+  honours `requiredWhen`, adds form-level rule errors. FieldSettings builders +
+  `designer/RulesEditor.tsx`. Server `POST /public/templates/{slug}/check` —
+  proxies only the author-stored `checkUrl`, blocks private/loopback targets.
+  jsonSchema importer resolves local `$ref`, merges `allOf`, collapses
+  `oneOf`/`anyOf` of consts to an enum. +9 tests, E2E verified. **Deferred:**
+  OpenAPI / XSD importers.
+- **F23, F25, F26** — in progress (F24 deferred, F27 parked).
 
 ---
 

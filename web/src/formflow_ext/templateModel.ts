@@ -8,6 +8,7 @@
  */
 import type { FormFlowSchema } from '@/core/form_flow/schemaModel'
 import type { FieldMetaMap, FieldPath } from './fieldMeta'
+import type { Rule } from './rules'
 
 /** A `%X%` / `${x}` / `{{x}}` placeholder found in the source values (F8). */
 export interface TokenSpec {
@@ -23,6 +24,8 @@ export interface FormTemplate {
   schema: FormFlowSchema
   meta: FieldMetaMap
   tokens: TokenSpec[]
+  /** Named cross-field checks (F22). */
+  rules?: Rule[]
   /** Round-trip format: 'xml' | 'yaml' | 'json' | 'toml' | 'ini' | 'csv' | 'dotenv'. */
   formatId: string
   /** XML only — render through the order-preserving path (keeps between-element comments). */
@@ -37,6 +40,7 @@ export interface StoredForm {
   values: Values
   meta: FieldMetaMap
   tokens: TokenSpec[]
+  rules: Rule[]
   /** Filled token values, keyed by the literal placeholder (`"%Name%"`). */
   tokenValues: Record<string, string>
   /** Round-trip format id. Falls back to `schema.format` for pre-F12 saves. */
@@ -61,6 +65,7 @@ export function parseStoredForm(raw: string): StoredForm | null {
     values: isObject(rec.values) ? (rec.values as Values) : {},
     meta: isObject(rec.meta) ? (rec.meta as FieldMetaMap) : {},
     tokens: Array.isArray(rec.tokens) ? (rec.tokens as TokenSpec[]) : [],
+    rules: Array.isArray(rec.rules) ? (rec.rules as Rule[]) : [],
     tokenValues: isObject(rec.tokenValues) ? (rec.tokenValues as Record<string, string>) : {},
     formatId: typeof rec.formatId === 'string' ? rec.formatId : schema.format,
     xmlPreserveOrder: rec.xmlPreserveOrder === true,
@@ -73,6 +78,7 @@ export function serializeStoredForm(f: StoredForm): string {
     values: f.values,
     meta: f.meta,
     tokens: f.tokens,
+    rules: f.rules,
     tokenValues: f.tokenValues,
     formatId: f.formatId,
     xmlPreserveOrder: f.xmlPreserveOrder,

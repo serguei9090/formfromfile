@@ -23,11 +23,21 @@ export type FieldPath = string
  */
 export type NumberFormat = 'integer' | 'decimal' | 'string'
 
+import type { Cond } from './rules'
+
 export interface FieldMeta {
   /** Display label; falls back to the field key. */
   label?: string
   /** Author help text, shown as a `?` tooltip to the filler. */
   help?: string
+  /** Show this field only when the condition holds (else hidden + skipped). */
+  visibleWhen?: Cond
+  /** Require this field only when the condition holds. */
+  requiredWhen?: Cond
+  /** `"${host}:${port}"` — read-only, evaluated from other fields at export. */
+  computed?: string
+  /** Async check: POST `{ value }` here on blur; expect `{ ok, message? }`. */
+  checkUrl?: string
   /**
    * `false` = locked boilerplate: hidden from the filler, value still emitted
    * on export. Absent / `true` = the filler edits it.

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import type { FormTemplate } from '@/formflow_ext/templateModel'
 import { applyTokens } from '@/formflow_ext/tokens'
 import { walkPaths } from '@/formflow_ext/fieldMeta'
+import { failingRules, withComputed } from '@/formflow_ext/rules'
 import { errorMessageAt, makeResolver } from '@/formflow_ext/validation'
 import { extensionFor, renderTemplate } from '@/formflow_ext/formats'
 import { valuesFromFilledFile } from '@/formflow_ext/reverseFill'
@@ -52,6 +53,7 @@ export function FillForm({
   initialValues,
   initialTokenValues = {},
   draftKey,
+  runCheck,
   onSubmit,
 }: {
   template: FormTemplate
@@ -61,13 +63,15 @@ export function FillForm({
   initialTokenValues?: Record<string, string>
   /** localStorage draft namespace, e.g. `fill:<id>` / `f:<slug>`. */
   draftKey?: string
+  /** Runs a field's author-configured async check; returns `{ ok, message? }`. */
+  runCheck?: (metaPath: string, value: string) => Promise<{ ok?: boolean; message?: string }>
   /** When set, a "Send to team" button POSTs the filled result. */
   onSubmit?: (args: { values: Values; output: string; submitter: string }) => Promise<void>
 }) {
-  const { schema, meta, tokens, formatId, xmlPreserveOrder } = template
+  const { schema, meta, tokens, rules, formatId, xmlPreserveOrder } = template
   const resolver = useMemo(
-    () => makeResolver(schema, meta) as unknown as Resolver<Values>,
-    [schema, meta],
+    () => makeResolver(schema, meta, rules) as unknown as Resolver<Values>,
+    [schema, meta, rules],
   )
   const draft = useMemo(() => loadDraft(draftKey), [draftKey])
   const form = useForm<Values>({
@@ -121,23 +125,47 @@ export function FillForm({
   }).length
   const requiredTotal = requiredPaths.length + tokens.length
 
+  const [asyncErrors, setAsyncErrors] = useState<Record<string, string>>({})
   const errors = form.formState.errors
   const ctx: FieldCtx = {
     control: form.control,
     reg: (n, o) => form.register(n as never, o),
     meta,
-    errorFor: (name) => errorMessageAt(errors, name),
+    values: watched,
+    errorFor: (name) => errorMessageAt(errors, name) ?? asyncErrors[name],
+    onBlurCheck: async (name, metaPath, value) => {
+      if (!runCheck || !value.trim()) return
+      try {
+        const res = await runCheck(metaPath, value)
+        setAsyncErrors((e) => {
+          const next = { ...e }
+          if (res.ok === false) next[name] = res.message || 'Failed validation'
+          else delete next[name]
+          return next
+        })
+      } catch {
+        /* ignore transient errors */
+      }
+    },
     hideLocked: true,
   }
+  const brokenRules = failingRules(rules, watched)
 
   const missingTokens = tokens.filter((t) => !(tokenValues[t.token] ?? '').trim())
-  const canExport = form.formState.isValid && missingTokens.length === 0
+  const canExport =
+    form.formState.isValid && missingTokens.length === 0 && brokenRules.length === 0
   const done = requiredDone + (tokens.length - missingTokens.length)
 
   async function doExport() {
     const ok = await form.trigger()
-    if (!ok || missingTokens.length > 0) return
-    const rendered = renderTemplate(formatId, schema, form.getValues(), source, { xmlPreserveOrder })
+    if (!ok || missingTokens.length > 0 || brokenRules.length > 0) return
+    const rendered = renderTemplate(
+      formatId,
+      schema,
+      withComputed(meta, form.getValues()),
+      source,
+      { xmlPreserveOrder },
+    )
     setOutput(applyTokens(rendered, tokenValues))
   }
 
@@ -201,6 +229,16 @@ export function FillForm({
       </button>
       {showDiff ? (
         <DiffView before={initialValues} after={watched} title="Your changes" />
+      ) : null}
+
+      {brokenRules.length > 0 ? (
+        <ul className="space-y-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+          {brokenRules.map((r) => (
+            <li key={r.id} role="alert">
+              {r.message}
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       <div className="flex items-center gap-3">

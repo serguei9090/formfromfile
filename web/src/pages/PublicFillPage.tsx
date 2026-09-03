@@ -100,6 +100,9 @@ export function PublicFillPage() {
               initialValues={loaded.values}
               initialTokenValues={loaded.tokenValues}
               draftKey={`f:${slug}`}
+              runCheck={async (metaPath, value) =>
+                api.post(`/public/templates/${slug}/check`, { path: metaPath, value })
+              }
               onSubmit={async ({ values, output, submitter }) => {
                 await api.post(`/public/templates/${slug}/submissions`, {
                   submitter,

@@ -60,6 +60,31 @@ describe('collectErrors', () => {
     expect(errs).toEqual([])
   })
 
+  it('honours visibleWhen / requiredWhen and form-level rules', () => {
+    const s2: FormFlowSchema = {
+      format: 'json',
+      rootName: 'r',
+      fields: [
+        { key: 'mode', type: 'text', children: [] },
+        { key: 'host', type: 'text', children: [] },
+      ],
+    }
+    const m2: FieldMetaMap = {
+      host: {
+        visibleWhen: { path: 'mode', op: 'eq', value: 'active' },
+        requiredWhen: { path: 'mode', op: 'eq', value: 'active' },
+      },
+    }
+    // hidden -> not required
+    expect(collectErrors(s2, m2, { mode: 'passive', host: '' })).toEqual([])
+    // visible + requiredWhen holds -> required
+    const errs = collectErrors(s2, m2, { mode: 'active', host: '' })
+    expect(errs.some((e) => e.name === 'host')).toBe(true)
+
+    const rules = [{ id: 'x', when: { path: 'mode', op: 'eq' as const, value: 'bad' }, message: 'nope' }]
+    expect(collectErrors(s2, {}, { mode: 'bad' }, rules).some((e) => e.message === 'nope')).toBe(true)
+  })
+
   it('skips locked (non-editable) fields', () => {
     const errs = collectErrors(schema, { Name: { required: true, editable: false } }, {
       Name: '',

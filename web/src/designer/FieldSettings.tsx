@@ -34,6 +34,12 @@ export function FieldSettings({
   }, [autoFocus])
   const leaf = field.type === 'text' || field.type === 'number' || field.type === 'boolean'
   const scalarInput = field.type === 'text' || field.type === 'number'
+  const vw = meta.visibleWhen && 'path' in meta.visibleWhen ? meta.visibleWhen : undefined
+  const setVisibleWhen = (patch: Partial<NonNullable<typeof vw>>) => {
+    const cur = vw ?? { path: '', op: 'eq' as const }
+    const next = { ...cur, ...patch }
+    onChange({ visibleWhen: next.path ? next : undefined })
+  }
   const presetOptions = PRESETS.filter((p) =>
     p.types.includes(field.type === 'number' ? 'number' : 'text'),
   )
@@ -175,6 +181,76 @@ export function FieldSettings({
             </div>
           ) : null}
         </>
+      ) : null}
+
+      {leaf ? (
+        <div className="space-y-2 border-t border-border/50 pt-2">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr]">
+            <div className="space-y-1">
+              <Label htmlFor={`vw-path-${field.key}`}>Show only when — field path</Label>
+              <Input
+                id={`vw-path-${field.key}`}
+                value={vw?.path ?? ''}
+                placeholder="e.g. mode"
+                onChange={(e) => setVisibleWhen({ path: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`vw-op-${field.key}`}>is</Label>
+              <Select
+                id={`vw-op-${field.key}`}
+                value={vw?.op ?? 'eq'}
+                onChange={(e) => setVisibleWhen({ op: e.target.value as 'eq' })}
+              >
+                <option value="eq">equal to</option>
+                <option value="ne">not equal to</option>
+                <option value="truthy">set / on</option>
+                <option value="empty">empty</option>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`vw-val-${field.key}`}>value</Label>
+              <Input
+                id={`vw-val-${field.key}`}
+                value={typeof vw?.value === 'string' ? vw.value : ''}
+                onChange={(e) => setVisibleWhen({ value: e.target.value })}
+              />
+            </div>
+          </div>
+          {vw?.path ? (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline"
+              onClick={() => onChange({ visibleWhen: undefined })}
+            >
+              clear condition
+            </button>
+          ) : null}
+
+          <div className="space-y-1">
+            <Label htmlFor={`comp-${field.key}`}>
+              Computed value — <code>{'${otherField}'}</code> templates (read-only field)
+            </Label>
+            <Input
+              id={`comp-${field.key}`}
+              value={meta.computed ?? ''}
+              placeholder="${host}:${port}"
+              onChange={(e) => onChange({ computed: e.target.value || undefined })}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor={`chk-${field.key}`}>
+              Async check URL — POST {'{ value }'}, expect {'{ ok, message? }'}
+            </Label>
+            <Input
+              id={`chk-${field.key}`}
+              value={meta.checkUrl ?? ''}
+              placeholder="https://…/validate"
+              onChange={(e) => onChange({ checkUrl: e.target.value || undefined })}
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   )

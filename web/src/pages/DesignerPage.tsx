@@ -18,10 +18,13 @@ import {
   type FormFlowSchema,
 } from '@/core/form_flow/schemaModel'
 import type { SchemaKind, TemplateVersion } from '@/api/types'
-import { pruneMetaMap, setMetaAt, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
+import { pruneMetaMap, setMetaAt, walkPaths, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
+import { RulesEditor } from '@/designer/RulesEditor'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
 import { applyTokens, pruneTokenValues, scanTokens } from '@/formflow_ext/tokens'
+import { withComputed } from '@/formflow_ext/rules'
+import type { Rule } from '@/formflow_ext/rules'
 import {
   FORMAT_ACCEPT,
   extensionFor,
@@ -54,6 +57,7 @@ export function DesignerPage() {
   const [meta, setMeta] = useState<FieldMetaMap>({})
   const [tokens, setTokens] = useState<TokenSpec[]>([])
   const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
+  const [rules, setRules] = useState<Rule[]>([])
   const [name, setName] = useState('')
   const [parseError, setParseError] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -97,6 +101,7 @@ export function DesignerPage() {
         setXmlPreserveOrder(saved.xmlPreserveOrder ?? false)
         setMeta(saved.meta)
         setTokens(saved.tokens)
+        setRules(saved.rules ?? [])
         setTokenValues(saved.tokenValues)
         form.reset(saved.values)
         return
@@ -107,6 +112,7 @@ export function DesignerPage() {
         setFormatId(p.formatId)
         setMeta(autoMetaFromSchema(p.schema))
         setTokens([])
+        setRules([])
         setTokenValues({})
         form.reset(p.seed)
       } catch (e) {
@@ -152,6 +158,7 @@ export function DesignerPage() {
       setSchema(detected)
       setMeta(nextMeta)
       setTokens(scanTokens(seed))
+      setRules([])
       setTokenValues({})
       setParseError('')
       setOutput(null)
@@ -184,9 +191,13 @@ export function DesignerPage() {
   function doExport() {
     if (!schema) return
     try {
-      const rendered = renderTemplate(formatId, schema, form.getValues(), source, {
-        xmlPreserveOrder,
-      })
+      const rendered = renderTemplate(
+        formatId,
+        schema,
+        withComputed(meta, form.getValues()),
+        source,
+        { xmlPreserveOrder },
+      )
       setOutput(applyTokens(rendered, tokenValues))
     } catch (e) {
       setParseError(msg(e))
@@ -223,6 +234,7 @@ export function DesignerPage() {
           values: form.getValues(),
           meta,
           tokens,
+          rules,
           tokenValues,
           formatId,
           xmlPreserveOrder,
@@ -242,9 +254,15 @@ export function DesignerPage() {
     }
   }
 
+  const watched = form.watch()
   const ctx = useMemo<FieldCtx>(
-    () => ({ control: form.control, reg: (n, o) => form.register(n as never, o), meta }),
-    [form, meta],
+    () => ({
+      control: form.control,
+      reg: (n, o) => form.register(n as never, o),
+      meta,
+      values: watched,
+    }),
+    [form, meta, watched],
   )
 
   return (
@@ -347,7 +365,7 @@ export function DesignerPage() {
           <CardContent>
             <FillForm
               key={JSON.stringify(meta) + tokens.length}
-              template={{ schema, meta, tokens, formatId, xmlPreserveOrder }}
+              template={{ schema, meta, tokens, rules, formatId, xmlPreserveOrder }}
               source={source}
               initialValues={form.getValues()}
               initialTokenValues={tokenValues}
@@ -378,6 +396,14 @@ export function DesignerPage() {
                 onMeta={(kp, patch) => setMeta((m) => setMetaAt(m, kp, patch))}
                 filter={filter}
               />
+              <details className="mt-3 text-xs">
+                <summary className="cursor-pointer text-muted-foreground">
+                  Cross-field rules ({rules.length})
+                </summary>
+                <div className="mt-2">
+                  <RulesEditor rules={rules} paths={walkPaths(schema.fields)} onChange={setRules} />
+                </div>
+              </details>
               {formatId === 'xml' ? (
                 <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                   <input

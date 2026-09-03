@@ -83,6 +83,7 @@ describe('parseStoredForm', () => {
       values: { Name: 'x' },
       meta: { Name: { label: 'N' } },
       tokens: [{ token: '%N%', name: 'N', occurrences: ['Name'] }],
+      rules: [],
       tokenValues: { '%N%': 'x' },
       formatId: 'xml',
     })
