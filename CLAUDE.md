@@ -185,14 +185,17 @@ submission delete + CSV + fill-draft autosave, sample gallery + first-run tip.
 Deferred: XML inline-comment position, per-token metadata, zip/QR, Playwright,
 README screenshots.
 
-**v0.2 roadmap:** [`PLAN-F19.md`](PLAN-F19.md) — reverse fill + diff, template
-versioning / draft-publish / folders / fork / approval, deeper validation
-(conditional/computed/cross-field/async), **AI assist** (server-side, Go
-Anthropic SDK, `FFF_ANTHROPIC_API_KEY`, degrades to 501 without a key), more
-formats + full-fidelity round-trip + bulk CSV fill, team workflow
-(roles / comments / webhooks / email / zip export), ops (audit log / captcha /
-analytics / theming / i18n / PWA). Integrations (GitHub PR, CLI, OIDC) parked
-until requested.
+**v0.2 done (F19–F23, F25, F26)** — see [`PLAN-F19.md`](PLAN-F19.md) progress
+log. Reverse fill + value diff; template versioning / draft-publish / folders /
+fork / approval queue; conditional/computed/cross-field/async validation
+(`formflow_ext/rules.ts`, no `eval`); **AI assist** (`server/internal/ai/`,
+`FFF_ANTHROPIC_API_KEY`, 501 without a key — see [`docs/AI.md`](docs/AI.md));
+`author` role + `requireAuthor`; submission comments; HMAC webhooks
+(`internal/webhook`) + delivery log; `submissions.zip`; audit log; per-form
+submission cap + branding + completion analytics; order-preserving XML render.
+Migrations run to **v5**. **Deferred:** F24 (HCL/systemd/… formats +
+full-fidelity + bulk CSV fill), email-on-submit, hCaptcha, i18n, PWA;
+**parked:** F27 integrations (GitHub PR, CLI, OIDC).
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

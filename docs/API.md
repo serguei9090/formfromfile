@@ -142,3 +142,68 @@ In the **release** build (`StaticFS` set), any non-`/api`, non-`/healthz` path
 serves the embedded SPA, falling back to `index.html` for client-side routes.
 In **dev** there is no `StaticFS` — Vite serves the SPA on `:5273` and proxies
 `/api` to `:8787`.
+
+---
+
+## v0.2 routes (F19–F26)
+
+Roles: `admin` > `author` > `user`. **Template writes** (`POST /api/schemas`,
+`PUT`, `DELETE`, `fork`, `rollback`, `publish`, `unpublish`, `approval`,
+`webhooks`, `ops`) require `author` or `admin` — a `user` gets `403`.
+
+### Templates
+
+| Method | Path | Notes |
+|--------|------|-------|
+| `GET` | `/api/schemas?folder=&tag=&q=` | filtered list |
+| `POST` | `/api/schemas/{id}/fork` | copy → new template, `forkedFrom` set |
+| `GET` | `/api/schemas/{id}/versions` · `/versions/{n}` | history; `{n}` has bodies |
+| `POST` | `/api/schemas/{id}/rollback/{n}` | copies v`n` into a fresh version |
+| `POST` | `/api/schemas/{id}/approval` | `{ requiresApproval }` |
+| `POST` | `/api/schemas/{id}/ops` | `{ submissionCap, brand }` (brand = JSON `{accent?, logoDataUri?}`) |
+| `GET` | `/api/schemas/{id}/submissions.zip` | streamed zip of rendered outputs |
+
+`PUT /api/schemas/{id}` body also takes `folder`, `tags[]`, `notes` (the
+version note). `SchemaSummary` gains `currentVersion`, `status`, `folder`,
+`tags`, `forkedFrom`, `requiresApproval`, `submissionCap`, `brand`, `viewCount`.
+
+### Submissions
+
+| Method | Path | Notes |
+|--------|------|-------|
+| `POST` | `/api/submissions/{id}/review` | `{ approved, note? }` — owner |
+| `GET` `POST` | `/api/submissions/{id}/comments` | thread |
+
+A submission carries `templateVersion` and `status` (`pending` when the
+template gates on approval, else `approved`).
+
+### Webhooks
+
+| Method | Path | Notes |
+|--------|------|-------|
+| `GET` `POST` | `/api/schemas/{id}/webhooks` | `{ url, events[] }` — secret returned once |
+| `DELETE` | `/api/webhooks/{id}` | |
+| `GET` | `/api/webhooks/{id}/deliveries` | last 50 attempts |
+
+Delivery: `POST { event, templateId, submission, output }` with
+`X-FFF-Signature: sha256=<hmac>`, 3 attempts, backoff. Events:
+`submission.created`, `submission.approved`.
+
+### Public share
+
+- `GET /api/public/templates/{slug}` now returns `brand`; each call bumps
+  `view_count`.
+- `POST /api/public/templates/{slug}/submissions` → `403` when the
+  per-slug `submissionCap` is reached.
+- `POST /api/public/templates/{slug}/check` — `{ path, value }` runs the
+  field's author-stored `checkUrl` (private/loopback/non-https rejected) →
+  `{ ok, message? }`.
+
+### AI (all `requireAuth`, 30/user/hour, `501` without `FFF_ANTHROPIC_API_KEY`)
+
+`GET /api/ai/status` · `POST /api/ai/{suggest-meta,explain-diff,
+schema-from-prompt,fill-assist}` — see [`AI.md`](AI.md).
+
+### Admin
+
+`POST /api/admin/users/{id}/role` `{ role }` · `GET /api/admin/audit?limit=`.

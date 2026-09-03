@@ -3,13 +3,38 @@
 All notable changes. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 this project versions by milestone rather than semver until 1.0.
 
-## [Unreleased]
+## [Unreleased] — v0.2 (F19–F26)
 
-Roadmap in [`PLAN-F19.md`](PLAN-F19.md) (v0.2): reverse fill + diff, template
-versioning / draft-publish / folders / fork / approval, deeper validation,
-server-side AI assist, team workflow (webhooks / email / zip export), ops
-(audit log / captcha / analytics / theming / i18n / PWA). More formats + bulk
-CSV fill (F24) and integrations (F27) are deferred.
+Plan + progress: [`PLAN-F19.md`](PLAN-F19.md). F24 (more formats + bulk CSV)
+and F27 (integrations) deferred.
+
+### Added
+
+- **Reverse fill + diff** (F20) — load form values from an already-filled file;
+  a value-tree diff on the fill screen and on each submission; "re-run a past
+  submission against the current template".
+- **Template lifecycle** (F21) — version history + rollback + per-version
+  notes; draft/published status; folders + tags + search; duplicate/fork;
+  an approval queue (`requires_approval` → submissions land `pending`).
+- **Validation depth** (F22) — conditional visibility / requirement
+  (structured predicates, no `eval`), computed fields (`${host}:${port}`),
+  named cross-field rules, an author-configured async check proxy, richer
+  JSON Schema import (`$ref` / `allOf` / `oneOf`-of-consts).
+- **AI assist** (F23) — server-side, `FFF_ANTHROPIC_API_KEY`-gated (501 without
+  it): suggest labels & validation, explain a diff, generate a starter file
+  from a description, fill a form from a plain-English instruction.
+- **Team & workflow** (F25) — an `author` role (fillers can't author);
+  submission comment threads; HMAC-signed webhooks with a delivery log;
+  `submissions.zip` export; an admin Users page.
+- **Ops** (F26) — an audit log; per-form submission cap; per-form public-page
+  branding (accent colour + logo); completion-rate analytics.
+- **Order-preserving XML** (F19) — opt-in render that keeps between-element
+  comments in place. `CHANGELOG.md`, `v0.1.0` tag.
+
+### Env
+
+`FFF_ANTHROPIC_API_KEY`, `FFF_AI_MODEL` (default `claude-sonnet-5`). Both
+degrade to feature-off.
 
 ## [0.1.0] — 2026-09-03
 
