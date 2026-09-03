@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { FileDropField } from '@/app/FileDropField'
 import { FormFields, type FieldCtx } from '@/designer/FormFields'
 import { SchemaTree } from '@/designer/SchemaTree'
-import { setFieldTypeAt } from '@/designer/schemaEdit'
+import { reseedPreserving, setFieldTypeAt } from '@/designer/schemaEdit'
 import { FormFlowParser } from '@/core/form_flow/formFlowParser'
 import {
   SOURCE_FORMAT_LABELS,
@@ -18,7 +18,8 @@ import {
   type FieldType,
   type FormFlowSchema,
 } from '@/core/form_flow/schemaModel'
-import { pruneMetaMap, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
+import { pruneMetaMap, setMetaAt, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
+import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
 import { applyTokens, pruneTokenValues, scanTokens } from '@/formflow_ext/tokens'
 import { parseRichXml, renderRichXml } from '@/formflow_ext/xml/richXml'
@@ -83,9 +84,10 @@ export function DesignerPage() {
       const s = parser.parse(source)
       // XML: re-parse with attributes + comments preserved (core drops them).
       const rich = s.format === 'xml' ? parseRichXml(source) : null
+      const detected = rich?.schema ?? s
       const seed = rich?.seed ?? defaultValuesFromFields(s.fields)
-      setSchema(rich?.schema ?? s)
-      setMeta({})
+      setSchema(detected)
+      setMeta(autoMetaFromSchema(detected))
       setTokens(scanTokens(seed))
       setTokenValues({})
       setParseError('')
@@ -102,7 +104,8 @@ export function DesignerPage() {
     setSchema((s) => {
       if (!s) return s
       const next = { ...s, fields: setFieldTypeAt(s.fields, path, type) }
-      const seed = defaultValuesFromFields(next.fields)
+      // keep values on branches that didn't change shape (finding #6)
+      const seed = reseedPreserving(next.fields, form.getValues())
       form.reset(seed)
       setMeta((m) => pruneMetaMap(m, next.fields))
       const tk = scanTokens(seed)
@@ -167,8 +170,8 @@ export function DesignerPage() {
   }
 
   const ctx = useMemo<FieldCtx>(
-    () => ({ control: form.control, reg: (n, o) => form.register(n as never, o) }),
-    [form],
+    () => ({ control: form.control, reg: (n, o) => form.register(n as never, o), meta }),
+    [form, meta],
   )
 
   return (
@@ -223,9 +226,15 @@ export function DesignerPage() {
             </CardHeader>
             <CardContent>
               <p className="mb-3 text-xs text-muted-foreground">
-                Retyping a field re-seeds the form with detected defaults.
+                Set a field's type, then open <span className="text-primary">⚙</span> for label,
+                help and validation. Retyping keeps values on branches that didn't change shape.
               </p>
-              <SchemaTree fields={schema.fields} onRetype={retype} />
+              <SchemaTree
+                fields={schema.fields}
+                onRetype={retype}
+                meta={meta}
+                onMeta={(kp, patch) => setMeta((m) => setMetaAt(m, kp, patch))}
+              />
               <Button
                 variant="ghost"
                 size="sm"

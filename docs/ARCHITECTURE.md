@@ -112,8 +112,40 @@ from `core/**` internals, no React.
   and leading comments from `source`. `xml/__fixtures__/` holds the ILS test
   file; `richXml.test.ts` asserts a lossless round trip.
 
-`DesignerPage` uses `parseRichXml` / `renderRichXml` whenever `schema.format ===
-'xml'`, and threads `meta` + `tokens` through load / detect / retype / save.
+- `tokens.ts` — `%X%` / `${x}` / `{{x}}` placeholders found in *values*.
+  `scanTokens(values)` → `TokenSpec[]` (name + occurrence paths); `applyTokens`
+  substitutes on the rendered string, format-agnostic; `pruneTokenValues`.
+- `presets.ts` — 10 named validators (`ipv4`, `ipv4-or-hostname`, `hostname`,
+  `port`, `email`, `toolname`, `slug`, `integer`, `decimal`, `nonempty`) each
+  `{ id, label, types, test, message }`. `EDITOR_ATTR_TO_PRESET` /
+  `presetForEditorAttr` map an `editor="…"` attribute value to a preset id.
+- `autoMeta.ts` — `autoMetaFromSchema(schema)` seeds `FieldMeta` from the
+  source: an `editor="…"` attribute sets a preset on its sibling value
+  (`#text` → `@_value` → `@_name` → first text leaf).
+- `validation.ts` — `collectErrors(schema, meta, values)` → `FieldError[]`
+  (required / preset / regex / enum / number min·max·integer), keyed by rhf
+  field name; `makeResolver(schema, meta)` adapts it to the rhf `Resolver`
+  contract (used by the fill screen, F10). No zod.
+
+`DesignerPage` uses `parseRichXml` / `renderRichXml` for XML, threads
+`meta` + `tokens` + `tokenValues` through load / detect / retype / save,
+seeds `meta` from `autoMetaFromSchema` on detect, and retypes with
+`reseedPreserving` (only the reshaped branch loses values).
+
+### Field authoring (`designer/`)
+
+- `SchemaTree.tsx` — one row per field: key · type `<Select>` · ⚙ toggle. The
+  ⚙ expands `FieldSettings` for that field's path. Structural keys (`#comment`)
+  are skipped in-place so retype path indices stay correct.
+- `FieldSettings.tsx` — label · help · "filler can edit" · required · preset
+  picker (filtered by field type) · number min/max · enum values (comma list →
+  dropdown) · advanced: raw regex + message. Emits `Partial<FieldMeta>` patches.
+- `schemaEdit.ts` — `setFieldTypeAt` (retype, immutable) + `reseedPreserving`
+  (re-seed keeping values that still fit their field's type).
+- `FormFields.tsx` — recursive form. `FieldCtx` now carries `meta`, optional
+  `errorFor(name)` and `hideLocked` (filler view). Renders label/help from
+  meta, `*` for required, `<select>` for `enumValues`, `disabled` for
+  `editable:false`, inline error text.
 
 ### The designer (`designer/` + `pages/DesignerPage.tsx`)
 
@@ -259,7 +291,8 @@ to `/designer/:id`.
 ## 5. Tests
 
 ```bash
-cd web    && bun run test     # 31: 14 parser + 1 cn() + 8 fieldMeta + 8 richXml
+cd web    && bun run test     # 57: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
+                              #     + presets 12 + validation 6 + autoMeta 2
 cd server && go test ./...     # auth (7) + store (1 CRUD + 2 migration)
 ```
 

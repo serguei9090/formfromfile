@@ -87,7 +87,12 @@ with an empty `meta` / `tokens` and behave exactly as before.
 - **F8 done** — `formflow_ext/tokens.ts`: `scanTokens` / `applyTokens` /
   `pruneTokenValues`; `%…%`, `${…}`, `{{…}}`. DesignerPage "Tokens" section,
   substitution on export, `tokenValues` persisted. +6 web tests, E2E verified.
-- **F9–F12** — pending.
+- **F9 done** — `presets.ts` (10 named validators + `editor=` attr map),
+  `validation.ts` (`collectErrors` / `makeResolver`, no zod), `autoMeta.ts`
+  (`editor="…"` → preset on sibling), `FieldSettings.tsx` panel wired into
+  `SchemaTree` (⚙ per row), `reseedPreserving` retype (finding #6), FormFields
+  shows label / help / required / enum-select. +20 web tests, E2E verified.
+- **F10–F12** — pending.
 
 ## Phases
 
