@@ -49,7 +49,11 @@ func Router(opts Options) http.Handler {
 
 		r.Group(func(r chi.Router) {
 			r.Use(h.requireAuth)
-			// schema CRUD lands in F3
+			r.Get("/schemas", h.listSchemas)
+			r.Post("/schemas", h.createSchema)
+			r.Get("/schemas/{id}", h.getSchema)
+			r.Put("/schemas/{id}", h.updateSchema)
+			r.Delete("/schemas/{id}", h.deleteSchema)
 		})
 
 		r.Group(func(r chi.Router) {
