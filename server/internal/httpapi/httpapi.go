@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/serguei9090/formfromfile/internal/ai"
 	"github.com/serguei9090/formfromfile/internal/auth"
 	"github.com/serguei9090/formfromfile/internal/store"
 )
@@ -18,6 +19,7 @@ import (
 type Options struct {
 	Store         *store.Store
 	Auth          *auth.Service
+	AI            ai.Service
 	AllowRegister bool
 	// StaticFS serves the built SPA (web/dist). Nil in dev — Vite proxies /api.
 	StaticFS fs.FS
@@ -70,6 +72,12 @@ func Router(opts Options) http.Handler {
 			r.Get("/submissions/{id}", h.getSubmission)
 			r.Post("/submissions/{id}/review", h.reviewSubmission)
 			r.Delete("/submissions/{id}", h.deleteSubmission)
+
+			r.Get("/ai/status", h.aiStatus)
+			r.Post("/ai/suggest-meta", h.aiSuggestMeta)
+			r.Post("/ai/explain-diff", h.aiExplainDiff)
+			r.Post("/ai/schema-from-prompt", h.aiSchemaFromPrompt)
+			r.Post("/ai/fill-assist", h.aiFillAssist)
 		})
 
 		r.Group(func(r chi.Router) {

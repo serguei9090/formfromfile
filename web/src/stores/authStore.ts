@@ -6,6 +6,8 @@ interface AuthState {
   user: User | null
   loading: boolean
   allowRegister: boolean
+  /** true when AI-assist endpoints are configured (FFF_ANTHROPIC_API_KEY set). */
+  aiEnabled: boolean
   /** true when the last refresh failed for a non-auth reason (backend down). */
   offline: boolean
   refresh: () => Promise<void>
@@ -18,6 +20,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
   allowRegister: true,
+  aiEnabled: false,
   offline: false,
 
   refresh: async () => {
@@ -27,6 +30,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         api.get<{ allowRegister: boolean }>('/config'),
       ])
       set({ user: me.user, allowRegister: cfg.allowRegister, loading: false, offline: false })
+      if (me.user) {
+        api
+          .get<{ enabled: boolean }>('/ai/status')
+          .then((s) => set({ aiEnabled: s.enabled }))
+          .catch(() => {})
+      }
     } catch (e) {
       // an ApiError means the server answered (e.g. 401) — that's not "offline";
       // a bare fetch failure (no status) means it's unreachable.

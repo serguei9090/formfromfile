@@ -9,6 +9,8 @@ import { applyTokens } from '@/formflow_ext/tokens'
 import { walkPaths } from '@/formflow_ext/fieldMeta'
 import { failingRules, withComputed } from '@/formflow_ext/rules'
 import { errorMessageAt, makeResolver } from '@/formflow_ext/validation'
+import { api } from '@/api/client'
+import { useAuthStore } from '@/stores/authStore'
 import { extensionFor, renderTemplate } from '@/formflow_ext/formats'
 import { valuesFromFilledFile } from '@/formflow_ext/reverseFill'
 import { DiffView } from './DiffView'
@@ -87,6 +89,41 @@ export function FillForm({
   const [sendError, setSendError] = useState('')
   const [loadError, setLoadError] = useState('')
   const [showDiff, setShowDiff] = useState(false)
+  const aiEnabled = useAuthStore((s) => s.aiEnabled)
+  const [aiInstruction, setAiInstruction] = useState('')
+  const [aiBusy, setAiBusy] = useState(false)
+  const [explanation, setExplanation] = useState('')
+
+  async function aiFill() {
+    if (!aiInstruction.trim()) return
+    setAiBusy(true)
+    try {
+      const { values } = await api.post<{ values: Record<string, unknown> }>('/ai/fill-assist', {
+        schema: JSON.stringify(schema),
+        meta: JSON.stringify(meta),
+        instruction: aiInstruction,
+      })
+      form.reset({ ...form.getValues(), ...values })
+    } catch {
+      /* ignore */
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  async function aiExplain() {
+    setExplanation('…')
+    try {
+      const { text } = await api.post<{ text: string }>('/ai/explain-diff', {
+        format: formatId,
+        before: JSON.stringify(initialValues, null, 2),
+        after: JSON.stringify(form.getValues(), null, 2),
+      })
+      setExplanation(text)
+    } catch {
+      setExplanation('')
+    }
+  }
 
   async function loadFromFile(file: File) {
     setLoadError('')
@@ -180,6 +217,19 @@ export function FillForm({
 
   return (
     <div className="space-y-4">
+      {aiEnabled ? (
+        <div className="flex gap-2">
+          <Input
+            value={aiInstruction}
+            onChange={(e) => setAiInstruction(e.target.value)}
+            placeholder="Describe what you need — e.g. passive FTP on 10.0.0.5, RTO auto-approve"
+          />
+          <Button variant="outline" onClick={() => void aiFill()} disabled={aiBusy || !aiInstruction.trim()}>
+            ✨ {aiBusy ? 'Filling…' : 'Fill'}
+          </Button>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 py-1 hover:bg-accent">
           <Upload className="size-3.5" /> Load values from a filled file
@@ -228,7 +278,17 @@ export function FillForm({
         {showDiff ? 'Hide' : 'Show'} changes from the original
       </button>
       {showDiff ? (
-        <DiffView before={initialValues} after={watched} title="Your changes" />
+        <>
+          <DiffView before={initialValues} after={watched} title="Your changes" />
+          {aiEnabled ? (
+            <button type="button" className="text-xs text-primary underline" onClick={() => void aiExplain()}>
+              ✨ Explain these changes
+            </button>
+          ) : null}
+          {explanation ? (
+            <p className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs">{explanation}</p>
+          ) : null}
+        </>
       ) : null}
 
       {brokenRules.length > 0 ? (

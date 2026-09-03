@@ -35,6 +35,8 @@ import { importJsonSchema, looksLikeJsonSchema } from '@/formflow_ext/importers/
 import { valuesFromFilledFile } from '@/formflow_ext/reverseFill'
 import { sampleById } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
+import { useAuthStore } from '@/stores/authStore'
+import { api } from '@/api/client'
 
 type Values = Record<string, unknown>
 
@@ -49,6 +51,9 @@ export function DesignerPage() {
   const getSchema = useSchemasStore((s) => s.get)
   const listVersions = useSchemasStore((s) => s.versions)
   const rollback = useSchemasStore((s) => s.rollback)
+  const aiEnabled = useAuthStore((s) => s.aiEnabled)
+  const [aiBusy, setAiBusy] = useState('')
+  const [aiPrompt, setAiPrompt] = useState('')
 
   const [source, setSource] = useState('')
   const [schema, setSchema] = useState<FormFlowSchema | null>(null)
@@ -171,6 +176,44 @@ export function DesignerPage() {
   }
 
   const detect = () => detectFrom(source)
+
+  async function aiSuggest() {
+    if (!schema) return
+    setAiBusy('suggest')
+    try {
+      const { meta: suggested } = await api.post<{ meta: Record<string, Partial<FieldMetaMap[string]>> }>(
+        '/ai/suggest-meta',
+        { schema: JSON.stringify(schema), values: JSON.stringify(form.getValues()) },
+      )
+      setMeta((m) => {
+        let next = m
+        for (const [path, patch] of Object.entries(suggested)) next = setMetaAt(next, path, patch)
+        return next
+      })
+    } catch (e) {
+      setParseError(msg(e))
+    } finally {
+      setAiBusy('')
+    }
+  }
+
+  async function aiFromPrompt() {
+    if (!aiPrompt.trim()) return
+    setAiBusy('prompt')
+    try {
+      const { body, kind } = await api.post<{ body: string; kind: string }>('/ai/schema-from-prompt', {
+        description: aiPrompt,
+        format: '',
+      })
+      setSource(body)
+      setName(kind ? `AI ${kind} template` : 'AI template')
+      detectFrom(body)
+    } catch (e) {
+      setParseError(msg(e))
+    } finally {
+      setAiBusy('')
+    }
+  }
 
   function retype(path: number[], type: FieldType) {
     setSchema((s) => {
@@ -317,6 +360,15 @@ export function DesignerPage() {
                 className="h-9 w-48"
               />
             ) : null}
+            {aiEnabled ? (
+              <Button
+                variant="outline"
+                onClick={() => void aiSuggest()}
+                disabled={aiBusy === 'suggest'}
+              >
+                ✨ {aiBusy === 'suggest' ? 'Thinking…' : 'Suggest labels & validation'}
+              </Button>
+            ) : null}
             <Button onClick={() => void save()} disabled={saving}>
               <Save className="size-4" /> {id ? 'Save version' : 'Save new'}
             </Button>
@@ -355,6 +407,25 @@ export function DesignerPage() {
             <Button onClick={detect} disabled={!source.trim()}>
               <FileSearch className="size-4" /> Detect schema
             </Button>
+            {aiEnabled ? (
+              <div className="space-y-2 border-t border-border/50 pt-3">
+                <p className="text-xs text-muted-foreground">…or describe the config you need:</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="e.g. a Postgres connection config with pool size and SSL"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => void aiFromPrompt()}
+                    disabled={aiBusy === 'prompt' || !aiPrompt.trim()}
+                  >
+                    ✨ {aiBusy === 'prompt' ? 'Generating…' : 'Generate'}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : preview ? (

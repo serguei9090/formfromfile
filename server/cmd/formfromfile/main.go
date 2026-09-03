@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/serguei9090/formfromfile/internal/ai"
 	"github.com/serguei9090/formfromfile/internal/auth"
 	"github.com/serguei9090/formfromfile/internal/httpapi"
 	"github.com/serguei9090/formfromfile/internal/store"
@@ -46,9 +47,12 @@ func main() {
 		}
 	}
 
+	aiSvc := ai.New()
+
 	h := httpapi.Router(httpapi.Options{
 		Store:         st,
 		Auth:          svc,
+		AI:            aiSvc,
 		AllowRegister: *allowRegister,
 		StaticFS:      staticFS,
 	})
@@ -59,8 +63,8 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	n, _ := st.CountUsers()
-	log.Printf("formfromfile listening on %s (db=%s, users=%d, register=%v, spa=%v)",
-		*addr, *dbPath, n, *allowRegister, staticFS != nil)
+	log.Printf("formfromfile listening on %s (db=%s, users=%d, register=%v, spa=%v, ai=%v)",
+		*addr, *dbPath, n, *allowRegister, staticFS != nil, aiSvc.Enabled())
 	log.Fatal(srv.ListenAndServe())
 }
 

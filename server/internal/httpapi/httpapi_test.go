@@ -278,6 +278,20 @@ func TestVersioningForkAndApproval(t *testing.T) {
 	}
 }
 
+func TestAIDisabledWithoutKey(t *testing.T) {
+	e := newEnv(t) // Router built with no AI service
+	owner := e.authed(t)
+
+	res, out := e.do(t, owner, "GET", "/api/ai/status", nil)
+	if res.StatusCode != http.StatusOK || out["enabled"] != false {
+		t.Fatalf("ai status: %d %v", res.StatusCode, out)
+	}
+	res, _ = e.do(t, owner, "POST", "/api/ai/suggest-meta", map[string]string{"schema": "{}", "values": "{}"})
+	if res.StatusCode != http.StatusNotImplemented {
+		t.Fatalf("suggest-meta without key → %d, want 501", res.StatusCode)
+	}
+}
+
 func TestHealthAndConfig(t *testing.T) {
 	e := newEnv(t)
 	res, out := e.do(t, e.anon, "GET", "/healthz", nil)

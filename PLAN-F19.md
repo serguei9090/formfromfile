@@ -67,7 +67,14 @@ needed). F27 stays parked.
   jsonSchema importer resolves local `$ref`, merges `allOf`, collapses
   `oneOf`/`anyOf` of consts to an enum. +9 tests, E2E verified. **Deferred:**
   OpenAPI / XSD importers.
-- **F23, F25, F26** — in progress (F24 deferred, F27 parked).
+- **F23 done** — `server/internal/ai/` on `anthropic-sdk-go` (Sonnet 5 default,
+  `FFF_AI_MODEL`); `Service` interface (fake for tests), no-op without a key.
+  Routes `/api/ai/{status,suggest-meta,explain-diff,schema-from-prompt,
+  fill-assist}` — `requireAuth`, 30/user/hr, **501 without `FFF_ANTHROPIC_API_KEY`**.
+  Frontend: `authStore.aiEnabled`; designer "✨ Suggest labels & validation" +
+  "describe the config you need"; fill screen "✨ Fill" + "Explain these
+  changes". `docs/AI.md`. +go test (501 path). Live calls not exercised in CI.
+- **F25, F26** — in progress (F24 deferred, F27 parked).
 
 ---
 
