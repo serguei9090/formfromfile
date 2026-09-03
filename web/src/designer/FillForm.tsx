@@ -62,7 +62,7 @@ export function FillForm({
   /** When set, a "Send to team" button POSTs the filled result. */
   onSubmit?: (args: { values: Values; output: string; submitter: string }) => Promise<void>
 }) {
-  const { schema, meta, tokens, formatId } = template
+  const { schema, meta, tokens, formatId, xmlPreserveOrder } = template
   const resolver = useMemo(
     () => makeResolver(schema, meta) as unknown as Resolver<Values>,
     [schema, meta],
@@ -121,7 +121,7 @@ export function FillForm({
   async function doExport() {
     const ok = await form.trigger()
     if (!ok || missingTokens.length > 0) return
-    const rendered = renderTemplate(formatId, schema, form.getValues(), source)
+    const rendered = renderTemplate(formatId, schema, form.getValues(), source, { xmlPreserveOrder })
     setOutput(applyTokens(rendered, tokenValues))
   }
 

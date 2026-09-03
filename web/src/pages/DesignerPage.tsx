@@ -47,6 +47,7 @@ export function DesignerPage() {
   const [source, setSource] = useState('')
   const [schema, setSchema] = useState<FormFlowSchema | null>(null)
   const [formatId, setFormatId] = useState('json')
+  const [xmlPreserveOrder, setXmlPreserveOrder] = useState(false)
   const [meta, setMeta] = useState<FieldMetaMap>({})
   const [tokens, setTokens] = useState<TokenSpec[]>([])
   const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
@@ -84,6 +85,7 @@ export function DesignerPage() {
       if (saved) {
         setSchema(saved.schema)
         setFormatId(saved.formatId)
+        setXmlPreserveOrder(saved.xmlPreserveOrder ?? false)
         setMeta(saved.meta)
         setTokens(saved.tokens)
         setTokenValues(saved.tokenValues)
@@ -173,7 +175,9 @@ export function DesignerPage() {
   function doExport() {
     if (!schema) return
     try {
-      const rendered = renderTemplate(formatId, schema, form.getValues(), source)
+      const rendered = renderTemplate(formatId, schema, form.getValues(), source, {
+        xmlPreserveOrder,
+      })
       setOutput(applyTokens(rendered, tokenValues))
     } catch (e) {
       setParseError(msg(e))
@@ -206,6 +210,7 @@ export function DesignerPage() {
           tokens,
           tokenValues,
           formatId,
+          xmlPreserveOrder,
         }),
       }
       if (id) {
@@ -306,7 +311,7 @@ export function DesignerPage() {
           <CardContent>
             <FillForm
               key={JSON.stringify(meta) + tokens.length}
-              template={{ schema, meta, tokens, formatId }}
+              template={{ schema, meta, tokens, formatId, xmlPreserveOrder }}
               source={source}
               initialValues={form.getValues()}
               initialTokenValues={tokenValues}
@@ -337,6 +342,17 @@ export function DesignerPage() {
                 onMeta={(kp, patch) => setMeta((m) => setMetaAt(m, kp, patch))}
                 filter={filter}
               />
+              {formatId === 'xml' ? (
+                <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="size-3.5 accent-primary"
+                    checked={xmlPreserveOrder}
+                    onChange={(e) => setXmlPreserveOrder(e.target.checked)}
+                  />
+                  Keep comments in their exact position (slower, rebuilds repeated blocks)
+                </label>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"

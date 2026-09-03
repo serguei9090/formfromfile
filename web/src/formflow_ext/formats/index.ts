@@ -7,6 +7,7 @@
 import { FormFlowParser } from '@/core/form_flow/formFlowParser'
 import { defaultValuesFromFields, type FormFlowSchema } from '@/core/form_flow/schemaModel'
 import { parseRichXml, renderRichXml } from '../xml/richXml'
+import { renderRichXmlOrdered } from '../xml/richXmlOrdered'
 import { parseRichYaml, renderRichYaml } from '../yaml/richYaml'
 import { seedFromValue } from './tree'
 import { csvPlugin } from './csv'
@@ -94,8 +95,15 @@ export function renderTemplate(
   schema: FormFlowSchema,
   values: Values,
   source: string,
+  opts?: { xmlPreserveOrder?: boolean },
 ): string {
-  if (formatId === 'xml') return renderRichXml(schema, values, source)
+  if (formatId === 'xml') {
+    if (opts?.xmlPreserveOrder) {
+      const ordered = renderRichXmlOrdered(schema, values, source)
+      if (ordered != null) return ordered
+    }
+    return renderRichXml(schema, values, source)
+  }
   if (formatId === 'yaml') return renderRichYaml(schema, values, source)
   if (formatId === 'json') return core.render(schema, values)
   const plugin = FORMAT_PLUGINS.find((p) => p.id === formatId)

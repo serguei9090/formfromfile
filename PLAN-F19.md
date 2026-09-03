@@ -22,14 +22,20 @@ layers — `core/form_flow/**` stays frozen. Each phase = its own commit(s) to
 | **F21** | Template lifecycle (versions, draft/publish, folders, fork, approval) | L | — |
 | **F22** | Validation depth (cross-field, conditional, computed, async) | L | F21 |
 | **F23** | AI assist (authoring, diff-explain, schema-from-prompt, fill-assist) | L | F21, F22 (more to fill in) |
-| **F24** | More formats + full-fidelity round-trip | L–XL | — |
-| **F25** | Team & workflow (roles, comments, webhooks, email, export-to-Git/zip, bulk CSV) | L | F21 |
+| **F25** | Team & workflow (roles, comments, webhooks, email, export-to-Git/zip) | L | F21 |
 | **F26** | Polish / ops (audit log, captcha, analytics, per-template theming, i18n, PWA) | M–L | F21 |
+| **F24** | More formats + full-fidelity round-trip + bulk CSV fill — **deferred (larger effort)** | L–XL | — |
 | **F27** | Integrations (GitHub PR, CLI, API tokens, OIDC) — **on request only** | — | F25 |
 
-**Recommended order:** F19 → F20 → F21 → F22 → F23 → F24 → F25 → F26. F24 is
-independent and can slot anywhere. If AI is wanted sooner, F23 can move to right
-after F21 — it will simply have less metadata / fewer rule types to generate.
+**Execution order:** F19 → F20 → F21 → F22 → F23 → F25 → F26. **F24 is deferred**
+(kept in this doc for scope; pick it up after F26 or when a specific format is
+needed). F27 stays parked.
+
+---
+
+## Progress
+
+- **F19–F26** — in progress (F24 deferred, F27 parked).
 
 ---
 
@@ -199,7 +205,7 @@ the button is hidden and the endpoints 501.
 
 ---
 
-### F24 — more formats + full-fidelity round-trip  ·  L–XL
+### F24 — more formats + full-fidelity round-trip  ·  L–XL   *(DEFERRED — larger effort)*
 
 - **New format plugins** (same `FormatPlugin` contract, `formflow_ext/formats/`):
   - **HCL** (Terraform) — `hcl2-parser` or a hand-rolled block/attr reader.

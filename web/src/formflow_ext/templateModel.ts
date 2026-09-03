@@ -25,6 +25,8 @@ export interface FormTemplate {
   tokens: TokenSpec[]
   /** Round-trip format: 'xml' | 'yaml' | 'json' | 'toml' | 'ini' | 'csv' | 'dotenv'. */
   formatId: string
+  /** XML only — render through the order-preserving path (keeps between-element comments). */
+  xmlPreserveOrder?: boolean
 }
 
 type Values = Record<string, unknown>
@@ -39,6 +41,7 @@ export interface StoredForm {
   tokenValues: Record<string, string>
   /** Round-trip format id. Falls back to `schema.format` for pre-F12 saves. */
   formatId: string
+  xmlPreserveOrder?: boolean
 }
 
 /** Tolerant decoder. Returns `null` when there's no usable `schema`. */
@@ -60,6 +63,7 @@ export function parseStoredForm(raw: string): StoredForm | null {
     tokens: Array.isArray(rec.tokens) ? (rec.tokens as TokenSpec[]) : [],
     tokenValues: isObject(rec.tokenValues) ? (rec.tokenValues as Record<string, string>) : {},
     formatId: typeof rec.formatId === 'string' ? rec.formatId : schema.format,
+    xmlPreserveOrder: rec.xmlPreserveOrder === true,
   }
 }
 
@@ -71,6 +75,7 @@ export function serializeStoredForm(f: StoredForm): string {
     tokens: f.tokens,
     tokenValues: f.tokenValues,
     formatId: f.formatId,
+    xmlPreserveOrder: f.xmlPreserveOrder,
   })
 }
 
