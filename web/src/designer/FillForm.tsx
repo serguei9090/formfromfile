@@ -25,6 +25,7 @@ export function FillForm({
   initialValues,
   initialTokenValues = {},
   ext,
+  onSubmit,
 }: {
   template: FormTemplate
   /** Original file text — needed to restore the XML declaration + comments. */
@@ -33,6 +34,8 @@ export function FillForm({
   initialTokenValues?: Record<string, string>
   /** Which file extension to name the download. */
   ext: string
+  /** When set, a "Send to team" button POSTs the filled result. */
+  onSubmit?: (args: { values: Values; output: string; submitter: string }) => Promise<void>
 }) {
   const { schema, meta, tokens } = template
   const resolver = useMemo(
@@ -42,6 +45,10 @@ export function FillForm({
   const form = useForm<Values>({ defaultValues: initialValues, resolver, mode: 'onChange' })
   const [tokenValues, setTokenValues] = useState(initialTokenValues)
   const [output, setOutput] = useState<string | null>(null)
+  const [submitter, setSubmitter] = useState('')
+  const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
 
   // compute initial validity so Export starts correctly disabled/enabled
   useEffect(() => {
@@ -112,6 +119,41 @@ export function FillForm({
           </span>
         ) : null}
       </div>
+
+      {output != null && onSubmit ? (
+        <div className="space-y-2 rounded-md border border-border/60 p-3">
+          {sent ? (
+            <p className="text-sm text-primary">Sent to the team. Thank you!</p>
+          ) : (
+            <>
+              <Label htmlFor="submitter">Your name or email (optional)</Label>
+              <Input
+                id="submitter"
+                value={submitter}
+                onChange={(e) => setSubmitter(e.target.value)}
+              />
+              {sendError ? <p className="text-xs text-destructive">{sendError}</p> : null}
+              <Button
+                disabled={sending}
+                onClick={async () => {
+                  setSending(true)
+                  setSendError('')
+                  try {
+                    await onSubmit({ values: form.getValues(), output, submitter })
+                    setSent(true)
+                  } catch (e) {
+                    setSendError(e instanceof Error ? e.message : String(e))
+                  } finally {
+                    setSending(false)
+                  }
+                }}
+              >
+                Send to team
+              </Button>
+            </>
+          )}
+        </div>
+      ) : null}
 
       {output != null ? (
         <div className="space-y-2">

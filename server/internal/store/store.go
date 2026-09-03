@@ -41,11 +41,23 @@ CREATE INDEX IF NOT EXISTS ix_schemas_user ON schemas(user_id, updated_at DESC);
 // have run. Index i (0-based) brings the DB to user_version i+1. Never edit or
 // reorder a shipped entry — only append.
 var migrations = []string{
-	// v1 — template publish/share columns (used by F11; added now so there is a
-	// single migration rather than three).
+	// v1 — template publish/share columns.
 	`ALTER TABLE schemas ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private';
 	 ALTER TABLE schemas ADD COLUMN share_slug TEXT;
 	 ALTER TABLE schemas ADD COLUMN published_at INTEGER;`,
+
+	// v2 — submissions: one filled-in copy of a template (F11).
+	`CREATE TABLE submissions (
+	   id           TEXT PRIMARY KEY,
+	   template_id  TEXT NOT NULL REFERENCES schemas(id) ON DELETE CASCADE,
+	   filled_by    TEXT REFERENCES users(id) ON DELETE SET NULL,
+	   submitter    TEXT NOT NULL DEFAULT '',
+	   values_json  TEXT NOT NULL DEFAULT '',
+	   output       TEXT NOT NULL DEFAULT '',
+	   created_at   INTEGER NOT NULL
+	 );
+	 CREATE INDEX ix_submissions_template ON submissions(template_id, created_at DESC);
+	 CREATE UNIQUE INDEX ix_schemas_slug ON schemas(share_slug) WHERE share_slug IS NOT NULL;`,
 }
 
 func migrate(db *sql.DB) error {

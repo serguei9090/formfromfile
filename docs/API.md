@@ -61,6 +61,35 @@ Same body as POST. `200 → { "schema": SchemaRecord }` · `404`.
 ### `DELETE /api/schemas/{id}`
 `200 → { "ok": true }` · `404`.
 
+### `POST /api/schemas/{id}/publish`
+Marks the template `shared`, minting a `share_slug` on first publish (kept on
+re-publish). `200 → { "schema": SchemaRecord }` · `404`.
+
+### `POST /api/schemas/{id}/unpublish`
+Back to `private` (slug retained). `200 → { "schema": SchemaRecord }` · `404`.
+
+### `GET /api/schemas/{id}/submissions`
+`200 → { "submissions": SubmissionSummary[] }` — newest first, **without**
+`valuesJson` / `output`. `404` if not yours.
+
+### `GET /api/submissions/{id}`
+`200 → { "submission": SubmissionRecord }` (with blobs) · `404` missing or the
+template isn't yours.
+
+---
+
+## Public share (no auth)
+
+### `GET /api/public/templates/{slug}`
+`200 → { "template": { name, kind, body, formJson } }` — no owner id, no other
+templates. `404` if the slug isn't currently shared.
+
+### `POST /api/public/templates/{slug}/submissions`
+Body `{ "submitter"?: string, "valuesJson": string, "output": string }`
+(`valuesJson`/`output` ≤ 1 MiB). Client renders `output`; the server stores it.
+A logged-in caller is attributed, otherwise anonymous. Per-IP fixed window
+(20/min) → `429`. `201 → { "submission": { id, createdAt } }` · `404` · `400`.
+
 ---
 
 ## Admin (`requireAuth` + `requireAdmin`)
@@ -85,8 +114,18 @@ type Role = 'admin' | 'user'
 interface User { id: string; email: string; role: Role; disabled: boolean; createdAt: number }
 
 type SchemaKind = 'xml' | 'yaml' | 'json'
-interface SchemaSummary { id: string; name: string; kind: SchemaKind; createdAt: number; updatedAt: number }
+type Visibility = 'private' | 'shared'
+interface SchemaSummary {
+  id: string; name: string; kind: SchemaKind
+  visibility: Visibility; shareSlug?: string; publishedAt?: number
+  createdAt: number; updatedAt: number
+}
 interface SchemaRecord extends SchemaSummary { body: string; formJson: string }
+
+interface SubmissionSummary {
+  id: string; templateId: string; filledBy?: string; submitter: string; createdAt: number
+}
+interface SubmissionRecord extends SubmissionSummary { valuesJson: string; output: string }
 ```
 
 `formJson` is `JSON.stringify({ schema: FormFlowSchema, values })` — the frontend

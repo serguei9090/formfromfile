@@ -47,6 +47,10 @@ func Router(opts Options) http.Handler {
 			r.Get("/me", h.me)
 		})
 
+		// Public: fill a shared template by slug. No auth.
+		r.Get("/public/templates/{slug}", h.publicTemplateBySlug)
+		r.Post("/public/templates/{slug}/submissions", h.createPublicSubmission)
+
 		r.Group(func(r chi.Router) {
 			r.Use(h.requireAuth)
 			r.Get("/schemas", h.listSchemas)
@@ -54,6 +58,10 @@ func Router(opts Options) http.Handler {
 			r.Get("/schemas/{id}", h.getSchema)
 			r.Put("/schemas/{id}", h.updateSchema)
 			r.Delete("/schemas/{id}", h.deleteSchema)
+			r.Post("/schemas/{id}/publish", h.publishSchema)
+			r.Post("/schemas/{id}/unpublish", h.unpublishSchema)
+			r.Get("/schemas/{id}/submissions", h.listSubmissions)
+			r.Get("/submissions/{id}", h.getSubmission)
 		})
 
 		r.Group(func(r chi.Router) {

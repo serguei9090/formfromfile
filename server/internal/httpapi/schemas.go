@@ -99,6 +99,32 @@ func (h *handlers) updateSchema(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"schema": saved})
 }
 
+func (h *handlers) publishSchema(w http.ResponseWriter, r *http.Request) {
+	sc, err := h.opts.Store.PublishSchema(currentUser(r).ID, chi.URLParam(r, "id"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "schema not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"schema": sc})
+}
+
+func (h *handlers) unpublishSchema(w http.ResponseWriter, r *http.Request) {
+	sc, err := h.opts.Store.UnpublishSchema(currentUser(r).ID, chi.URLParam(r, "id"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, "schema not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"schema": sc})
+}
+
 func (h *handlers) deleteSchema(w http.ResponseWriter, r *http.Request) {
 	err := h.opts.Store.DeleteSchema(currentUser(r).ID, chi.URLParam(r, "id"))
 	if errors.Is(err, store.ErrNotFound) {

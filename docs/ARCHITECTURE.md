@@ -154,10 +154,16 @@ seeds `meta` from `autoMetaFromSchema` on detect, and retypes with
 
 ### Pages
 
-- `pages/HomePage.tsx` — "My Forms": each card has **Fill** (`/fill/:id`),
-  edit (`/designer/:id`) and delete.
-- `pages/FillPage.tsx` — loads a saved template, renders `<FillForm>`. Falls
-  back to `parseRichXml` + `autoMetaFromSchema` for a pre-F6 `formJson`.
+- `pages/HomePage.tsx` — "My Forms": per card — Publish/Copy-link/Unpublish,
+  a "shared" badge + submissions link, **Fill** (`/fill/:id`), edit, delete.
+- `pages/FillPage.tsx` — fill one of your own saved templates (preview, no
+  submission). Falls back to `parseRichXml` + `autoMetaFromSchema` for a
+  pre-F6 `formJson`.
+- `pages/PublicFillPage.tsx` — `/f/:slug`, **outside** `AuthGate` (own minimal
+  header). `GET /api/public/templates/:slug` → `<FillForm onSubmit=…>` that
+  POSTs the filled result to `/api/public/templates/:slug/submissions`.
+- `pages/SubmissionsPage.tsx` — `/schemas/:id/submissions`: list → view one →
+  download its `output`.
 - `pages/DesignerPage.tsx` — the authoring orchestrator (below).
 
 ### The designer (`designer/` + `pages/DesignerPage.tsx`)
@@ -225,12 +231,21 @@ No Radix / Base UI.
   (`modernc.org/sqlite`, `SetMaxOpenConns(1)`, `PRAGMA foreign_keys = ON`) and
   applies the schema (`users`, `sessions`, `schemas`). `CountUsers()` (the
   first registrant becomes admin).
+- `store.go` — also holds `migrations []string` + `migrate(db)`: `PRAGMA
+  user_version` tracks how many have run; append-only. v1 adds the
+  `schemas.visibility` / `share_slug` / `published_at` columns, v2 the
+  `submissions` table + a unique partial index on `share_slug`.
 - `schemas.go` — `Schema` struct + user-scoped `ListSchemas` (bodies stripped),
-  `GetSchema`, `CreateSchema`, `UpdateSchema`, `DeleteSchema`. Every query has
-  `AND user_id = ?`. `ErrNotFound` is returned for both "missing" and "not
-  yours". `MaxSchemaBody = 1 MiB`.
-- `schemas_test.go` — proves cross-user get/update/delete all return
-  `ErrNotFound`.
+  `GetSchema`, `CreateSchema`, `UpdateSchema`, `DeleteSchema`, plus
+  `PublishSchema` (mints `share_slug` via `COALESCE`, sets `visibility='shared'`),
+  `UnpublishSchema`, and `SchemaBySlug` (no user scope, `visibility='shared'`
+  only). Every user query has `AND user_id = ?`. `ErrNotFound` for both
+  "missing" and "not yours". `MaxSchemaBody = 1 MiB`.
+- `submissions.go` — `Submission` + `CreateSubmission` (anon when `filledBy` is
+  ""), `ListSubmissions` (owner-checked via `GetSchema`, blobs stripped),
+  `GetSubmission` (joins `schemas` for ownership). `MaxSubmissionBody = 1 MiB`.
+- `schemas_test.go` / `submissions_test.go` — cross-user isolation, publish /
+  unpublish / slug reuse, anonymous vs attributed submissions.
 
 ### `internal/auth/`
 
@@ -306,7 +321,7 @@ to `/designer/:id`.
 ```bash
 cd web    && bun run test     # 59: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
                               #     + presets 12 + validation 6 + autoMeta 2 + FillForm 2
-cd server && go test ./...     # auth (7) + store (1 CRUD + 2 migration)
+cd server && go test ./...     # auth (7) + store (CRUD + migration + publish/submissions)
 ```
 
 Add backend tests with a temp-file SQLite: `store.Open(filepath.Join(t.TempDir(),

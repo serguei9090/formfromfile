@@ -96,7 +96,14 @@ with an empty `meta` / `tokens` and behave exactly as before.
   gated on `formState.isValid` + all tokens filled, locked fields hidden but
   emitted), `pages/FillPage.tsx` at `/fill/:id`, `errorMessageAt` helper,
   HomePage "Fill" / edit / delete actions. +2 web tests (RTL), E2E verified.
-- **F11–F12** — pending.
+- **F11 done** — `submissions` table (migration v2) + unique slug index;
+  store `PublishSchema` / `UnpublishSchema` / `SchemaBySlug` / submission CRUD;
+  routes `/schemas/{id}/publish|unpublish|submissions`, `/submissions/{id}`,
+  public `/public/templates/{slug}` + `/submissions` (per-IP 20/min); frontend
+  `PublicFillPage` (`/f/:slug`, no Shell), `SubmissionsPage`, HomePage
+  publish/copy-link/unpublish, `FillForm` "Send to team". +2 go tests, E2E
+  verified (publish → anon fill → owner reads → unpublish 404).
+- **F12** — pending.
 
 ## Phases
 

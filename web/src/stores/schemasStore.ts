@@ -10,6 +10,8 @@ interface SchemasState {
   create: (input: NewSchema) => Promise<SchemaRecord>
   update: (id: string, input: NewSchema) => Promise<SchemaRecord>
   remove: (id: string) => Promise<void>
+  publish: (id: string) => Promise<SchemaRecord>
+  unpublish: (id: string) => Promise<SchemaRecord>
 }
 
 export interface NewSchema {
@@ -53,5 +55,17 @@ export const useSchemasStore = create<SchemasState>((set, get) => ({
   remove: async (id) => {
     await api.del(`/schemas/${id}`)
     set({ list: get().list.filter((s) => s.id !== id) })
+  },
+
+  publish: async (id) => {
+    const { schema } = await api.post<{ schema: SchemaRecord }>(`/schemas/${id}/publish`)
+    await get().refresh()
+    return schema
+  },
+
+  unpublish: async (id) => {
+    const { schema } = await api.post<{ schema: SchemaRecord }>(`/schemas/${id}/unpublish`)
+    await get().refresh()
+    return schema
   },
 }))

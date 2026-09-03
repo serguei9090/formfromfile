@@ -4,6 +4,8 @@ import { Shell } from '@/app/Shell'
 import { HomePage } from '@/pages/HomePage'
 import { DesignerPage } from '@/pages/DesignerPage'
 import { FillPage } from '@/pages/FillPage'
+import { PublicFillPage } from '@/pages/PublicFillPage'
+import { SubmissionsPage } from '@/pages/SubmissionsPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 
@@ -12,6 +14,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/f/:slug" element={<PublicFillPage />} />
       <Route
         element={
           <AuthGate>
@@ -23,6 +26,7 @@ export function App() {
         <Route path="designer" element={<DesignerPage />} />
         <Route path="designer/:id" element={<DesignerPage />} />
         <Route path="fill/:id" element={<FillPage />} />
+        <Route path="schemas/:id/submissions" element={<SubmissionsPage />} />
       </Route>
     </Routes>
   )
