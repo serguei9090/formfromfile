@@ -112,6 +112,7 @@ func (h *handlers) forkSchema(w http.ResponseWriter, r *http.Request) {
 	if handleErr(w, err, "schema not found") {
 		return
 	}
+	h.audit(r, "template.fork", sc.ID, "from "+chi.URLParam(r, "id"))
 	writeJSON(w, http.StatusCreated, map[string]any{"schema": sc})
 }
 
@@ -138,6 +139,7 @@ func (h *handlers) rollbackSchema(w http.ResponseWriter, r *http.Request) {
 	if handleErr(w, err, "version not found") {
 		return
 	}
+	h.audit(r, "template.rollback", sc.ID, "to v"+strconv.Itoa(n))
 	writeJSON(w, http.StatusOK, map[string]any{"schema": sc})
 }
 
@@ -146,6 +148,7 @@ func (h *handlers) publishSchema(w http.ResponseWriter, r *http.Request) {
 	if handleErr(w, err, "schema not found") {
 		return
 	}
+	h.audit(r, "template.publish", sc.ID, sc.Name)
 	writeJSON(w, http.StatusOK, map[string]any{"schema": sc})
 }
 
@@ -154,6 +157,7 @@ func (h *handlers) unpublishSchema(w http.ResponseWriter, r *http.Request) {
 	if handleErr(w, err, "schema not found") {
 		return
 	}
+	h.audit(r, "template.unpublish", sc.ID, sc.Name)
 	writeJSON(w, http.StatusOK, map[string]any{"schema": sc})
 }
 
@@ -173,10 +177,12 @@ func (h *handlers) setApprovalGate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handlers) deleteSchema(w http.ResponseWriter, r *http.Request) {
-	err := h.opts.Store.DeleteSchema(currentUser(r).ID, chi.URLParam(r, "id"))
+	tid := chi.URLParam(r, "id")
+	err := h.opts.Store.DeleteSchema(currentUser(r).ID, tid)
 	if handleErr(w, err, "schema not found") {
 		return
 	}
+	h.audit(r, "template.delete", tid, "")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

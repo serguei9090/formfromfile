@@ -88,6 +88,7 @@ func Router(opts Options) http.Handler {
 				r.Post("/schemas/{id}/approval", h.setApprovalGate)
 				r.Post("/schemas/{id}/webhooks", h.addWebhook)
 				r.Delete("/webhooks/{id}", h.deleteWebhook)
+				r.Post("/schemas/{id}/ops", h.setTemplateOps)
 			})
 		})
 
@@ -98,6 +99,7 @@ func Router(opts Options) http.Handler {
 			r.Post("/admin/users/{id}/disable", h.setUserDisabled)
 			r.Post("/admin/users/{id}/reset", h.resetUserPassword)
 			r.Post("/admin/users/{id}/role", h.setUserRole)
+			r.Get("/admin/audit", h.adminAudit)
 		})
 
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {

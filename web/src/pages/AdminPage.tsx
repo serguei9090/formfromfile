@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { api } from '@/api/client'
-import type { Role, User } from '@/api/types'
+import type { AuditEntry, Role, User } from '@/api/types'
 import { Card } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 export function AdminPage() {
   const me = useAuthStore((s) => s.user)
   const [users, setUsers] = useState<User[] | null>(null)
+  const [audit, setAudit] = useState<AuditEntry[]>([])
   const [error, setError] = useState('')
 
   const load = () =>
@@ -24,6 +25,10 @@ export function AdminPage() {
 
   useEffect(() => {
     void load()
+    api
+      .get<{ entries: AuditEntry[] }>('/admin/audit?limit=100')
+      .then((r) => setAudit(r.entries ?? []))
+      .catch(() => {})
   }, [])
 
   if (me?.role !== 'admin') return <p className="text-sm text-muted-foreground">Admins only.</p>
@@ -84,6 +89,26 @@ export function AdminPage() {
           ))}
         </div>
       )}
+
+      {audit.length > 0 ? (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground">Audit log ({audit.length})</summary>
+          <ul className="mt-2 space-y-1">
+            {audit.map((a) => (
+              <li key={a.id} className="flex gap-2">
+                <span className="text-muted-foreground">
+                  {new Date(a.createdAt).toLocaleString()}
+                </span>
+                <span className="font-medium">{a.actorEmail || 'system'}</span>
+                <span className="font-mono">{a.action}</span>
+                <span className="truncate text-muted-foreground">
+                  {a.target} {a.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </div>
   )
 }

@@ -55,6 +55,7 @@ func (h *handlers) reviewSubmission(w http.ResponseWriter, r *http.Request) {
 	if handleErr(w, err, "submission not found") {
 		return
 	}
+	h.audit(r, "submission.review", sub.ID, map[bool]string{true: "approved", false: "rejected"}[b.Approved])
 	if b.Approved {
 		full, _ := h.opts.Store.GetSubmission(currentUser(r).ID, sub.ID)
 		if full != nil {
@@ -73,6 +74,7 @@ type publicTemplate struct {
 	Kind     string `json:"kind"`
 	Body     string `json:"body"`
 	FormJSON string `json:"formJson"`
+	Brand    string `json:"brand,omitempty"`
 }
 
 func (h *handlers) publicTemplateBySlug(w http.ResponseWriter, r *http.Request) {
@@ -85,8 +87,11 @@ func (h *handlers) publicTemplateBySlug(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.opts.Store.BumpViewCount(sc.ID)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"template": publicTemplate{Name: sc.Name, Kind: sc.Kind, Body: sc.Body, FormJSON: sc.FormJSON},
+		"template": publicTemplate{
+			Name: sc.Name, Kind: sc.Kind, Body: sc.Body, FormJSON: sc.FormJSON, Brand: sc.Brand,
+		},
 	})
 }
 
@@ -122,6 +127,11 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 	}
 	if len(b.Submitter) > 200 {
 		b.Submitter = b.Submitter[:200]
+	}
+
+	if sc.SubmissionCap > 0 && h.opts.Store.SubmissionCount(sc.ID) >= sc.SubmissionCap {
+		writeErr(w, http.StatusForbidden, "this form is no longer accepting submissions")
+		return
 	}
 
 	// A logged-in filler is attributed; a share-link visitor is anonymous.

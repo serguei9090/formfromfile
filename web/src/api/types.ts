@@ -26,6 +26,9 @@ export interface SchemaSummary {
   tags: string[]
   forkedFrom?: string
   requiresApproval: boolean
+  submissionCap: number
+  brand?: string
+  viewCount: number
   createdAt: number
   updatedAt: number
 }
@@ -51,6 +54,16 @@ export interface PublicTemplate {
   kind: SchemaKind
   body: string
   formJson: string
+  brand?: string
+}
+
+export interface AuditEntry {
+  id: string
+  actorEmail: string
+  action: string
+  target: string
+  detail?: string
+  createdAt: number
 }
 
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected'

@@ -348,6 +348,47 @@ func TestWebhookCommentsAndZip(t *testing.T) {
 	_ = res.Body.Close()
 }
 
+func TestOpsCapAuditAndBranding(t *testing.T) {
+	e := newEnv(t)
+	owner := e.authed(t)
+
+	_, out := e.do(t, owner, "POST", "/api/schemas", map[string]any{
+		"name": "T", "kind": "json", "body": "{}", "formJson": "{}",
+	})
+	id := out["schema"].(map[string]any)["id"].(string)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/ops",
+		map[string]any{"submissionCap": 1, "brand": `{"accent":"#123456"}`})
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	slug := out["schema"].(map[string]any)["shareSlug"].(string)
+
+	// public view exposes the brand + bumps view_count
+	_, pt := e.do(t, e.anon, "GET", "/api/public/templates/"+slug, nil)
+	if pt["template"].(map[string]any)["brand"] != `{"accent":"#123456"}` {
+		t.Fatalf("brand not exposed: %v", pt)
+	}
+
+	// first submission ok, second blocked by the cap
+	if res, _ := e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"valuesJson": "{}", "output": "x"}); res.StatusCode != http.StatusCreated {
+		t.Fatalf("first submission: %d", res.StatusCode)
+	}
+	if res, _ := e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"valuesJson": "{}", "output": "x"}); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("capped submission: %d, want 403", res.StatusCode)
+	}
+
+	// audit recorded publish + ops
+	_, out = e.do(t, owner, "GET", "/api/admin/audit", nil)
+	actions := map[string]bool{}
+	for _, a := range out["entries"].([]any) {
+		actions[a.(map[string]any)["action"].(string)] = true
+	}
+	if !actions["template.publish"] || !actions["template.ops"] {
+		t.Fatalf("audit missing entries: %v", actions)
+	}
+}
+
 func TestAIDisabledWithoutKey(t *testing.T) {
 	e := newEnv(t) // Router built with no AI service
 	owner := e.authed(t)

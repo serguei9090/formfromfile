@@ -85,7 +85,14 @@ needed). F27 stays parked.
   ZIP + webhooks section, HomePage hides authoring for fillers. +go tests
   (webhook payload + HMAC, comments, zip). **Deferred:** email-on-submit,
   Git-repo commit target.
-- **F26** — in progress (F24 deferred, F27 parked).
+- **F26 done** (partial) — migration v5: `audit_log`, `schemas.submission_cap`
+  / `brand` / `view_count`. `store.Audit` / `RecentAudit` / `BumpViewCount` /
+  `SubmissionCount` / `SetTemplateOps`. Audit recorded on publish / unpublish /
+  rollback / fork / delete / review / role / ops; `GET /api/admin/audit`.
+  Per-slug submission cap enforced (403 "no longer accepting"); public view
+  bumps `view_count` → completion-rate on SubmissionsPage. Per-template brand
+  (accent colour + optional logo) applied on `/f/:slug`. AdminPage audit-log
+  panel. +go test. **Deferred:** hCaptcha/Turnstile, i18n, offline PWA.
 
 ---
 

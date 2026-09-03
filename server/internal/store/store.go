@@ -118,6 +118,22 @@ var migrations = []string{
 	   created_at  INTEGER NOT NULL
 	 );
 	 CREATE INDEX ix_wd_webhook ON webhook_deliveries(webhook_id, created_at DESC);`,
+
+	// v5 — ops (F26): audit log, per-slug submission cap, per-template branding,
+	// a public-view counter for completion-rate analytics.
+	`CREATE TABLE audit_log (
+	   id          TEXT PRIMARY KEY,
+	   actor_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+	   actor_email TEXT NOT NULL DEFAULT '',
+	   action      TEXT NOT NULL,
+	   target      TEXT NOT NULL DEFAULT '',
+	   detail      TEXT NOT NULL DEFAULT '',
+	   created_at  INTEGER NOT NULL
+	 );
+	 CREATE INDEX ix_audit_time ON audit_log(created_at DESC);
+	 ALTER TABLE schemas ADD COLUMN submission_cap INTEGER NOT NULL DEFAULT 0;
+	 ALTER TABLE schemas ADD COLUMN brand TEXT NOT NULL DEFAULT '';
+	 ALTER TABLE schemas ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0;`,
 }
 
 func migrate(db *sql.DB) error {

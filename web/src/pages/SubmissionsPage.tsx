@@ -232,18 +232,66 @@ export function SubmissionsPage() {
       </div>
 
       {template ? (
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            className="size-3.5 accent-primary"
-            checked={template.requiresApproval}
-            onChange={async (e) => {
-              const updated = await setApproval(template.id, e.target.checked)
-              setTemplate(updated)
-            }}
-          />
-          Require review before a submission counts (approval queue)
-        </label>
+        <div className="space-y-2 text-xs text-muted-foreground">
+          <p>
+            {list?.length ?? 0} submissions · {template.viewCount} opens
+            {template.viewCount > 0
+              ? ` · ${Math.round(((list?.length ?? 0) / template.viewCount) * 100)}% completion`
+              : ''}
+          </p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="size-3.5 accent-primary"
+              checked={template.requiresApproval}
+              onChange={async (e) => {
+                const updated = await setApproval(template.id, e.target.checked)
+                setTemplate(updated)
+              }}
+            />
+            Require review before a submission counts (approval queue)
+          </label>
+          <label className="flex items-center gap-2">
+            Close after
+            <input
+              type="number"
+              min={0}
+              className="h-7 w-20 rounded-md border border-input bg-card px-2"
+              defaultValue={template.submissionCap || 0}
+              onBlur={async (e) => {
+                const cap = Number(e.target.value) || 0
+                await api.post(`/schemas/${template.id}/ops`, {
+                  submissionCap: cap,
+                  brand: template.brand ?? '',
+                })
+                setTemplate({ ...template, submissionCap: cap })
+              }}
+            />
+            submissions (0 = unlimited)
+          </label>
+          <label className="flex items-center gap-2">
+            Public page accent
+            <input
+              type="color"
+              className="h-7 w-12"
+              defaultValue={(() => {
+                try {
+                  return JSON.parse(template.brand || '{}').accent || '#059669'
+                } catch {
+                  return '#059669'
+                }
+              })()}
+              onBlur={async (e) => {
+                const brand = JSON.stringify({ accent: e.target.value })
+                await api.post(`/schemas/${template.id}/ops`, {
+                  submissionCap: template.submissionCap,
+                  brand,
+                })
+                setTemplate({ ...template, brand })
+              }}
+            />
+          </label>
+        </div>
       ) : null}
 
       <details className="text-xs">

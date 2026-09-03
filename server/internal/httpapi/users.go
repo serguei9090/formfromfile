@@ -47,6 +47,7 @@ func (h *handlers) setUserRole(w http.ResponseWriter, r *http.Request) {
 	err := h.opts.Auth.SetRole(chi.URLParam(r, "id"), auth.Role(b.Role))
 	switch {
 	case err == nil:
+		h.audit(r, "user.role", chi.URLParam(r, "id"), b.Role)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	case errors.Is(err, auth.ErrInvalidRole):
 		writeErr(w, http.StatusBadRequest, err.Error())
