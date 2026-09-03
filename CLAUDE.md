@@ -176,6 +176,11 @@ templates, author ⚙ panel, validated `/fill/:id`, publish + `/f/:slug` share +
 submissions, format plugins (TOML/INI/`.env`/CSV) + JSON Schema import. Extra
 deps: `smol-toml`, `papaparse` (+ `@types/papaparse`).
 
+**Polish backlog:** [`PLAN-F13.md`](PLAN-F13.md) — format fidelity (comment/order
+preserving YAML + `.env`), designer UX (collapsible tree, Fill preview, token
+authoring), submissions export/delete, code-split + a11y + responsive,
+Playwright e2e + `golangci-lint` + error surfacing, onboarding samples.
+
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
 `.dockerignore`. Release build copies `web/dist` into
