@@ -48,7 +48,14 @@ update the note in F14.
   `source`. +8 web tests, E2E verified. **Deferred:** XML inline-comment
   position (`preserveOrder` opt-in) — current bunched-to-parent-top behaviour
   kept.
-- **F14–F18** — pending.
+- **F16 done** (partial) — route-level `React.lazy` + `Suspense`: initial JS
+  208 kB (67 kB gzip, was 613/194); the format libs (`yaml` / `papaparse` /
+  `smol-toml`) split into a 315 kB chunk that loads only on designer/fill
+  routes. A11y: `aria-expanded` on the ⚙ toggle, `role="alert"` on field +
+  send errors, focus moves into the `FieldSettings` panel on open, descriptive
+  `aria-label`s. Responsive designer was already 1-col below `lg` — the
+  segmented small-screen control is **deferred** (authors use desktop).
+- **F14, F15, F17, F18** — pending.
 
 ## Phases
 

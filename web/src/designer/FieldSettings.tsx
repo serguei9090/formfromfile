@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
@@ -19,12 +19,19 @@ export function FieldSettings({
   field,
   meta,
   onChange,
+  autoFocus,
 }: {
   field: SchemaField
   meta: FieldMeta
   onChange: (patch: Partial<FieldMeta>) => void
+  autoFocus?: boolean
 }) {
   const [advanced, setAdvanced] = useState(!!meta.pattern)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (autoFocus) rootRef.current?.querySelector<HTMLElement>('input, select, textarea')?.focus()
+  }, [autoFocus])
   const leaf = field.type === 'text' || field.type === 'number' || field.type === 'boolean'
   const scalarInput = field.type === 'text' || field.type === 'number'
   const presetOptions = PRESETS.filter((p) =>
@@ -32,7 +39,12 @@ export function FieldSettings({
   )
 
   return (
-    <div className="mt-1 space-y-2 rounded-md border border-border/60 bg-muted/40 p-2 text-sm">
+    <div
+      ref={rootRef}
+      role="group"
+      aria-label={`Settings for ${field.key}`}
+      className="mt-1 space-y-2 rounded-md border border-border/60 bg-muted/40 p-2 text-sm"
+    >
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor={`lbl-${field.key}`}>Label</Label>

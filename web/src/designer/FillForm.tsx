@@ -124,7 +124,11 @@ export function FillForm({
                 value={submitter}
                 onChange={(e) => setSubmitter(e.target.value)}
               />
-              {sendError ? <p className="text-xs text-destructive">{sendError}</p> : null}
+              {sendError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {sendError}
+                </p>
+              ) : null}
               <Button
                 disabled={sending}
                 onClick={async () => {

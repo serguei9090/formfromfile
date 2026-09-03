@@ -149,7 +149,11 @@ function FieldRow({
           {...ctx.reg(name)}
         />
       )}
-      {err ? <p className="text-xs text-destructive">{err}</p> : null}
+      {err ? (
+        <p role="alert" className="text-xs text-destructive">
+          {err}
+        </p>
+      ) : null}
     </div>
   )
 }

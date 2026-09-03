@@ -78,16 +78,21 @@ function Row({
         </Select>
         <button
           type="button"
-          aria-label="Field settings"
-          aria-pressed={open}
-          className={`rounded p-1 hover:bg-muted ${configured ? 'text-primary' : 'text-muted-foreground'}`}
+          aria-label={`Field settings for ${field.key}`}
+          aria-expanded={open}
+          className={`rounded p-1 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${configured ? 'text-primary' : 'text-muted-foreground'}`}
           onClick={() => setOpen((o) => !o)}
         >
           <Settings2 className="size-3.5" />
         </button>
       </div>
       {open ? (
-        <FieldSettings field={field} meta={meta} onChange={(patch) => onMeta(keyPath, patch)} />
+        <FieldSettings
+          field={field}
+          meta={meta}
+          onChange={(patch) => onMeta(keyPath, patch)}
+          autoFocus
+        />
       ) : null}
     </>
   )
