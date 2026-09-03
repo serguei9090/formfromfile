@@ -125,7 +125,20 @@ from `core/**` internals, no React.
 - `validation.ts` — `collectErrors(schema, meta, values)` → `FieldError[]`
   (required / preset / regex / enum / number min·max·integer), keyed by rhf
   field name; `makeResolver(schema, meta)` adapts it to the rhf `Resolver`
-  contract (used by the fill screen, F10). No zod.
+  contract (used by the fill screen, F10); `errorMessageAt`. No zod.
+- `formats/` — the non-core format registry. `types.ts` (`FormatPlugin`),
+  `tree.ts` (generic value-tree ↔ `SchemaField[]`, core semantics),
+  `toml.ts` (`smol-toml`), `ini.ts` (INI + `.properties`), `dotenv.ts`,
+  `csv.ts` (`papaparse`, header row → `rows` array). `index.ts` —
+  `parseSource(raw)` tries the core (JSON→XML→YAML) then each plugin's
+  `detect`; `renderTemplate(formatId, …)` dispatches; `FORMAT_ACCEPT` /
+  `extensionFor`. `schema.format` stays `'json'` for plugin formats —
+  **`formatId` is the round-trip source of truth**, stored on `FormTemplate` /
+  `StoredForm` (falls back to `schema.format` for pre-F12 saves).
+- `importers/jsonSchema.ts` — `looksLikeJsonSchema` + `importJsonSchema`: a
+  JSON Schema builds the form directly, mapping `type` / `required` / `enum` /
+  `pattern` / `minimum·maximum` / `title` / `description` straight onto
+  `SchemaField` + `FieldMeta` (no content inference — review finding #8).
 
 `DesignerPage` uses `parseRichXml` / `renderRichXml` for XML, threads
 `meta` + `tokens` + `tokenValues` through load / detect / retype / save,
@@ -319,8 +332,9 @@ to `/designer/:id`.
 ## 5. Tests
 
 ```bash
-cd web    && bun run test     # 59: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
+cd web    && bun run test     # 69: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
                               #     + presets 12 + validation 6 + autoMeta 2 + FillForm 2
+                              #     + formats 6 + jsonSchema 6
 cd server && go test ./...     # auth (7) + store (CRUD + migration + publish/submissions)
 ```
 

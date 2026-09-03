@@ -164,11 +164,14 @@ saved forms.
   docker build.
 - tag `v0.1.0`.
 
-**F6+ — templates + validation + roles + formats (not started).** Full phased
-plan in [`PLAN-F6.md`](PLAN-F6.md): field-metadata/validation model (in a new
-`web/src/formflow_ext/` layer — the verbatim `core/` stays frozen), XML-attribute
-round-trip, `%TOKEN%` templates, author/filler split, publish + share +
-submissions, pluggable formats (TOML/INI/.env/CSV + JSON Schema/XSD import).
+**F6–F12 done.** All in `web/src/formflow_ext/` (the verbatim `core/` stays
+frozen) — see [`PLAN-F6.md`](PLAN-F6.md) progress log and
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §"extension layer". Field
+metadata + validation presets, XML-attribute/comment round-trip, `%TOKEN%`
+templates, author ⚙ panel, validated `/fill/:id`, publish + `/f/:slug` share +
+submissions, format plugins (TOML/INI/`.env`/CSV) + JSON Schema import. Extra
+deps: `smol-toml`, `papaparse` (+ `@types/papaparse`). Still open: **F5**
+(release + Docker + CI), XSD import.
 
 **Deferred / ideas** (`PLAN.md` "Open items"): schema version history + diff,
 reverse-fill from an existing filled file, OIDC/SSO.

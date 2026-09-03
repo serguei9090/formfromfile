@@ -6,14 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Leaf } from '@/app/Leaf'
 import { useApplyTheme } from '@/stores/themeStore'
 import { FillForm } from '@/designer/FillForm'
-import { FormFlowParser } from '@/core/form_flow/formFlowParser'
-import { defaultValuesFromFields } from '@/core/form_flow/schemaModel'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, type FormTemplate } from '@/formflow_ext/templateModel'
-import { parseRichXml } from '@/formflow_ext/xml/richXml'
-
-const parser = new FormFlowParser()
-const EXT: Record<string, string> = { xml: 'xml', yaml: 'yaml', json: 'json' }
+import { parseSource } from '@/formflow_ext/formats'
 
 type Loaded = {
   name: string
@@ -40,19 +35,28 @@ export function PublicFillPage() {
           setLoaded({
             name: template.name,
             source: template.body,
-            template: { schema: saved.schema, meta: saved.meta, tokens: saved.tokens },
+            template: {
+              schema: saved.schema,
+              meta: saved.meta,
+              tokens: saved.tokens,
+              formatId: saved.formatId,
+            },
             values: saved.values,
             tokenValues: saved.tokenValues,
           })
           return
         }
-        const rich = parseRichXml(template.body)
-        const schema = rich?.schema ?? parser.parse(template.body)
+        const p = parseSource(template.body)
         setLoaded({
           name: template.name,
           source: template.body,
-          template: { schema, meta: autoMetaFromSchema(schema), tokens: [] },
-          values: rich?.seed ?? defaultValuesFromFields(schema.fields),
+          template: {
+            schema: p.schema,
+            meta: autoMetaFromSchema(p.schema),
+            tokens: [],
+            formatId: p.formatId,
+          },
+          values: p.seed,
           tokenValues: {},
         })
       })
@@ -82,7 +86,6 @@ export function PublicFillPage() {
               source={loaded.source}
               initialValues={loaded.values}
               initialTokenValues={loaded.tokenValues}
-              ext={EXT[loaded.template.schema.format] ?? 'txt'}
               onSubmit={async ({ values, output, submitter }) => {
                 await api.post(`/public/templates/${slug}/submissions`, {
                   submitter,

@@ -11,25 +11,28 @@ import { FileDropField } from '@/app/FileDropField'
 import { FormFields, type FieldCtx } from '@/designer/FormFields'
 import { SchemaTree } from '@/designer/SchemaTree'
 import { reseedPreserving, setFieldTypeAt } from '@/designer/schemaEdit'
-import { FormFlowParser } from '@/core/form_flow/formFlowParser'
 import {
-  SOURCE_FORMAT_LABELS,
   defaultValuesFromFields,
   type FieldType,
   type FormFlowSchema,
 } from '@/core/form_flow/schemaModel'
+import type { SchemaKind } from '@/api/types'
 import { pruneMetaMap, setMetaAt, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
 import { applyTokens, pruneTokenValues, scanTokens } from '@/formflow_ext/tokens'
-import { parseRichXml, renderRichXml } from '@/formflow_ext/xml/richXml'
+import {
+  FORMAT_ACCEPT,
+  extensionFor,
+  parseSource,
+  renderTemplate,
+} from '@/formflow_ext/formats'
+import { importJsonSchema, looksLikeJsonSchema } from '@/formflow_ext/importers/jsonSchema'
 import { useSchemasStore } from '@/stores/schemasStore'
 
-const parser = new FormFlowParser()
 type Values = Record<string, unknown>
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
-const EXT: Record<string, string> = { xml: 'xml', yaml: 'yaml', json: 'json' }
 
 export function DesignerPage() {
   const { id } = useParams()
@@ -40,6 +43,7 @@ export function DesignerPage() {
 
   const [source, setSource] = useState('')
   const [schema, setSchema] = useState<FormFlowSchema | null>(null)
+  const [formatId, setFormatId] = useState('json')
   const [meta, setMeta] = useState<FieldMetaMap>({})
   const [tokens, setTokens] = useState<TokenSpec[]>([])
   const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
@@ -59,6 +63,7 @@ export function DesignerPage() {
       const saved = parseStoredForm(rec.formJson)
       if (saved) {
         setSchema(saved.schema)
+        setFormatId(saved.formatId)
         setMeta(saved.meta)
         setTokens(saved.tokens)
         setTokenValues(saved.tokenValues)
@@ -66,12 +71,13 @@ export function DesignerPage() {
         return
       }
       try {
-        const s = parser.parse(rec.body)
-        setSchema(s)
-        setMeta({})
+        const p = parseSource(rec.body)
+        setSchema(p.schema)
+        setFormatId(p.formatId)
+        setMeta(autoMetaFromSchema(p.schema))
         setTokens([])
         setTokenValues({})
-        form.reset(defaultValuesFromFields(s.fields))
+        form.reset(p.seed)
       } catch (e) {
         setParseError(msg(e))
       }
@@ -81,13 +87,26 @@ export function DesignerPage() {
 
   function detect() {
     try {
-      const s = parser.parse(source)
-      // XML: re-parse with attributes + comments preserved (core drops them).
-      const rich = s.format === 'xml' ? parseRichXml(source) : null
-      const detected = rich?.schema ?? s
-      const seed = rich?.seed ?? defaultValuesFromFields(s.fields)
+      let detected: FormFlowSchema
+      let seed: Values
+      let nextMeta: FieldMetaMap
+
+      if (looksLikeJsonSchema(source)) {
+        const imported = importJsonSchema(source)
+        detected = imported.schema
+        nextMeta = imported.meta
+        seed = defaultValuesFromFields(detected.fields)
+        setFormatId('json')
+      } else {
+        const p = parseSource(source)
+        detected = p.schema
+        seed = p.seed
+        nextMeta = autoMetaFromSchema(detected)
+        setFormatId(p.formatId)
+      }
+
       setSchema(detected)
-      setMeta(autoMetaFromSchema(detected))
+      setMeta(nextMeta)
       setTokens(scanTokens(seed))
       setTokenValues({})
       setParseError('')
@@ -119,10 +138,7 @@ export function DesignerPage() {
   function doExport() {
     if (!schema) return
     try {
-      const rendered =
-        schema.format === 'xml'
-          ? renderRichXml(schema, form.getValues(), source)
-          : parser.render(schema, form.getValues())
+      const rendered = renderTemplate(formatId, schema, form.getValues(), source)
       setOutput(applyTokens(rendered, tokenValues))
     } catch (e) {
       setParseError(msg(e))
@@ -134,7 +150,7 @@ export function DesignerPage() {
     const blob = new Blob([output], { type: 'text/plain' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `${(name || 'form').replace(/\s+/g, '-')}.${EXT[schema.format]}`
+    a.download = `${(name || 'form').replace(/\s+/g, '-')}.${extensionFor(formatId)}`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -146,7 +162,7 @@ export function DesignerPage() {
     try {
       const payload = {
         name: name.trim() || 'Untitled form',
-        kind: schema.format,
+        kind: formatId as SchemaKind,
         body: source,
         formJson: serializeStoredForm({
           schema,
@@ -154,6 +170,7 @@ export function DesignerPage() {
           meta,
           tokens,
           tokenValues,
+          formatId,
         }),
       }
       if (id) {
@@ -179,8 +196,8 @@ export function DesignerPage() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Designer</h1>
         {schema ? (
-          <span className="rounded bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-            {SOURCE_FORMAT_LABELS[schema.format]}
+          <span className="rounded bg-accent px-2 py-0.5 text-xs font-medium uppercase text-accent-foreground">
+            {formatId}
           </span>
         ) : null}
         <div className="flex-1" />
@@ -209,7 +226,7 @@ export function DesignerPage() {
             <FileDropField
               value={source}
               onChange={setSource}
-              accept=".xml,.yaml,.yml,.json"
+              accept={FORMAT_ACCEPT}
               placeholder={'<config>\n  <enabled>true</enabled>\n</config>'}
             />
             {parseError ? <p className="text-sm text-destructive">{parseError}</p> : null}

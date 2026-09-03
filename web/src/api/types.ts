@@ -8,7 +8,7 @@ export interface User {
   createdAt: number
 }
 
-export type SchemaKind = 'xml' | 'yaml' | 'json'
+export type SchemaKind = 'xml' | 'yaml' | 'json' | 'toml' | 'ini' | 'csv' | 'dotenv'
 
 export type Visibility = 'private' | 'shared'
 

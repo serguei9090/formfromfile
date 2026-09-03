@@ -23,6 +23,8 @@ export interface FormTemplate {
   schema: FormFlowSchema
   meta: FieldMetaMap
   tokens: TokenSpec[]
+  /** Round-trip format: 'xml' | 'yaml' | 'json' | 'toml' | 'ini' | 'csv' | 'dotenv'. */
+  formatId: string
 }
 
 type Values = Record<string, unknown>
@@ -35,6 +37,8 @@ export interface StoredForm {
   tokens: TokenSpec[]
   /** Filled token values, keyed by the literal placeholder (`"%Name%"`). */
   tokenValues: Record<string, string>
+  /** Round-trip format id. Falls back to `schema.format` for pre-F12 saves. */
+  formatId: string
 }
 
 /** Tolerant decoder. Returns `null` when there's no usable `schema`. */
@@ -48,12 +52,14 @@ export function parseStoredForm(raw: string): StoredForm | null {
   if (!obj || typeof obj !== 'object') return null
   const rec = obj as Record<string, unknown>
   if (!rec.schema || typeof rec.schema !== 'object') return null
+  const schema = rec.schema as FormFlowSchema
   return {
-    schema: rec.schema as FormFlowSchema,
+    schema,
     values: isObject(rec.values) ? (rec.values as Values) : {},
     meta: isObject(rec.meta) ? (rec.meta as FieldMetaMap) : {},
     tokens: Array.isArray(rec.tokens) ? (rec.tokens as TokenSpec[]) : [],
     tokenValues: isObject(rec.tokenValues) ? (rec.tokenValues as Record<string, string>) : {},
+    formatId: typeof rec.formatId === 'string' ? rec.formatId : schema.format,
   }
 }
 
@@ -64,6 +70,7 @@ export function serializeStoredForm(f: StoredForm): string {
     meta: f.meta,
     tokens: f.tokens,
     tokenValues: f.tokenValues,
+    formatId: f.formatId,
   })
 }
 

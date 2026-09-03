@@ -3,16 +3,12 @@ import { Link, useParams } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FillForm } from '@/designer/FillForm'
-import { FormFlowParser } from '@/core/form_flow/formFlowParser'
-import { defaultValuesFromFields } from '@/core/form_flow/schemaModel'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, type FormTemplate } from '@/formflow_ext/templateModel'
-import { parseRichXml } from '@/formflow_ext/xml/richXml'
+import { parseSource } from '@/formflow_ext/formats'
 import { useSchemasStore } from '@/stores/schemasStore'
 
-const parser = new FormFlowParser()
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
-const EXT: Record<string, string> = { xml: 'xml', yaml: 'yaml', json: 'json' }
 
 type Loaded = {
   name: string
@@ -38,19 +34,28 @@ export function FillPage() {
           setLoaded({
             name: rec.name,
             source: rec.body,
-            template: { schema: saved.schema, meta: saved.meta, tokens: saved.tokens },
+            template: {
+              schema: saved.schema,
+              meta: saved.meta,
+              tokens: saved.tokens,
+              formatId: saved.formatId,
+            },
             values: saved.values,
             tokenValues: saved.tokenValues,
           })
           return
         }
-        const rich = parseRichXml(rec.body)
-        const schema = rich?.schema ?? parser.parse(rec.body)
+        const p = parseSource(rec.body)
         setLoaded({
           name: rec.name,
           source: rec.body,
-          template: { schema, meta: autoMetaFromSchema(schema), tokens: [] },
-          values: rich?.seed ?? defaultValuesFromFields(schema.fields),
+          template: {
+            schema: p.schema,
+            meta: autoMetaFromSchema(p.schema),
+            tokens: [],
+            formatId: p.formatId,
+          },
+          values: p.seed,
           tokenValues: {},
         })
       })
@@ -81,7 +86,6 @@ export function FillPage() {
             source={loaded.source}
             initialValues={loaded.values}
             initialTokenValues={loaded.tokenValues}
-            ext={EXT[loaded.template.schema.format] ?? 'txt'}
           />
         </CardContent>
       </Card>

@@ -103,7 +103,12 @@ with an empty `meta` / `tokens` and behave exactly as before.
   `PublicFillPage` (`/f/:slug`, no Shell), `SubmissionsPage`, HomePage
   publish/copy-link/unpublish, `FillForm` "Send to team". +2 go tests, E2E
   verified (publish → anon fill → owner reads → unpublish 404).
-- **F12** — pending.
+- **F12 done** — `formflow_ext/formats/` registry (`parseSource` core-first
+  then plugins, `renderTemplate` dispatch): TOML (`smol-toml`), INI/.properties,
+  `.env`, CSV (`papaparse`); `formflow_ext/importers/jsonSchema.ts` (declared
+  types → `SchemaField` + `FieldMeta`, fixes finding #8). `formatId` threaded
+  through StoredForm / DesignerPage / FillForm / Fill pages; backend
+  `validKinds` extended. +18 web tests, E2E verified (TOML round trip).
 
 ## Phases
 

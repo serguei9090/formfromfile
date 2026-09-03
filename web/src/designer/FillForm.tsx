@@ -4,14 +4,12 @@ import { Copy, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FormFlowParser } from '@/core/form_flow/formFlowParser'
 import type { FormTemplate } from '@/formflow_ext/templateModel'
 import { applyTokens } from '@/formflow_ext/tokens'
 import { errorMessageAt, makeResolver } from '@/formflow_ext/validation'
-import { renderRichXml } from '@/formflow_ext/xml/richXml'
+import { extensionFor, renderTemplate } from '@/formflow_ext/formats'
 import { FormFields, type FieldCtx } from './FormFields'
 
-const parser = new FormFlowParser()
 type Values = Record<string, unknown>
 
 /**
@@ -24,7 +22,6 @@ export function FillForm({
   source,
   initialValues,
   initialTokenValues = {},
-  ext,
   onSubmit,
 }: {
   template: FormTemplate
@@ -32,12 +29,10 @@ export function FillForm({
   source: string
   initialValues: Values
   initialTokenValues?: Record<string, string>
-  /** Which file extension to name the download. */
-  ext: string
   /** When set, a "Send to team" button POSTs the filled result. */
   onSubmit?: (args: { values: Values; output: string; submitter: string }) => Promise<void>
 }) {
-  const { schema, meta, tokens } = template
+  const { schema, meta, tokens, formatId } = template
   const resolver = useMemo(
     () => makeResolver(schema, meta) as unknown as Resolver<Values>,
     [schema, meta],
@@ -71,10 +66,7 @@ export function FillForm({
   async function doExport() {
     const ok = await form.trigger()
     if (!ok || missingTokens.length > 0) return
-    const rendered =
-      schema.format === 'xml'
-        ? renderRichXml(schema, form.getValues(), source)
-        : parser.render(schema, form.getValues())
+    const rendered = renderTemplate(formatId, schema, form.getValues(), source)
     setOutput(applyTokens(rendered, tokenValues))
   }
 
@@ -82,7 +74,7 @@ export function FillForm({
     if (!output) return
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([output], { type: 'text/plain' }))
-    a.download = `filled.${ext}`
+    a.download = `filled.${extensionFor(formatId)}`
     a.click()
     URL.revokeObjectURL(a.href)
   }

@@ -17,16 +17,12 @@ const template: FormTemplate = {
     Note: { editable: false },
   },
   tokens: [],
+  formatId: 'json',
 }
 
 const setup = () =>
   render(
-    <FillForm
-      template={template}
-      source=""
-      initialValues={{ Host: '', Note: 'internal' }}
-      ext="json"
-    />,
+    <FillForm template={template} source="" initialValues={{ Host: '', Note: 'internal' }} />,
   )
 
 describe('FillForm', () => {
