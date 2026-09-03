@@ -92,7 +92,11 @@ with an empty `meta` / `tokens` and behave exactly as before.
   (`editor="…"` → preset on sibling), `FieldSettings.tsx` panel wired into
   `SchemaTree` (⚙ per row), `reseedPreserving` retype (finding #6), FormFields
   shows label / help / required / enum-select. +20 web tests, E2E verified.
-- **F10–F12** — pending.
+- **F10 done** — `designer/FillForm.tsx` (validated fill-only view, Export
+  gated on `formState.isValid` + all tokens filled, locked fields hidden but
+  emitted), `pages/FillPage.tsx` at `/fill/:id`, `errorMessageAt` helper,
+  HomePage "Fill" / edit / delete actions. +2 web tests (RTL), E2E verified.
+- **F11–F12** — pending.
 
 ## Phases
 

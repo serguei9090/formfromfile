@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router'
-import { FilePlus2, Trash2 } from 'lucide-react'
+import { FilePlus2, PencilLine, SquarePen, Trash2 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -40,12 +40,25 @@ export function HomePage() {
         <div className="grid gap-2">
           {list.map((s) => (
             <Card key={s.id} className="flex items-center gap-3 p-3">
-              <Link to={`/designer/${s.id}`} className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{s.name}</div>
                 <div className="text-xs text-muted-foreground">
                   <span className="uppercase">{s.kind}</span> · edited{' '}
                   {new Date(s.updatedAt).toLocaleString()}
                 </div>
+              </div>
+              <Link
+                to={`/fill/${s.id}`}
+                className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              >
+                <PencilLine className="size-4" /> Fill
+              </Link>
+              <Link
+                to={`/designer/${s.id}`}
+                className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+                aria-label="Edit template"
+              >
+                <SquarePen className="size-4" />
               </Link>
               <Button
                 variant="ghost"

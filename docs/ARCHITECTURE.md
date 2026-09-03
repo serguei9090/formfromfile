@@ -146,6 +146,19 @@ seeds `meta` from `autoMetaFromSchema` on detect, and retypes with
   `errorFor(name)` and `hideLocked` (filler view). Renders label/help from
   meta, `*` for required, `<select>` for `enumValues`, `disabled` for
   `editable:false`, inline error text.
+- `FillForm.tsx` — the fill-only view (no schema tree). `useForm` with
+  `makeResolver(schema, meta)` cast to `Resolver`; Export stays disabled until
+  `formState.isValid` **and** every token is filled; locked fields are hidden
+  but their values still render. Reused by `FillPage` and (F11) the public
+  share route.
+
+### Pages
+
+- `pages/HomePage.tsx` — "My Forms": each card has **Fill** (`/fill/:id`),
+  edit (`/designer/:id`) and delete.
+- `pages/FillPage.tsx` — loads a saved template, renders `<FillForm>`. Falls
+  back to `parseRichXml` + `autoMetaFromSchema` for a pre-F6 `formJson`.
+- `pages/DesignerPage.tsx` — the authoring orchestrator (below).
 
 ### The designer (`designer/` + `pages/DesignerPage.tsx`)
 
@@ -291,8 +304,8 @@ to `/designer/:id`.
 ## 5. Tests
 
 ```bash
-cd web    && bun run test     # 57: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
-                              #     + presets 12 + validation 6 + autoMeta 2
+cd web    && bun run test     # 59: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
+                              #     + presets 12 + validation 6 + autoMeta 2 + FillForm 2
 cd server && go test ./...     # auth (7) + store (1 CRUD + 2 migration)
 ```
 

@@ -116,14 +116,35 @@ function checkLeaf(name: string, field: SchemaField, m: FieldMeta, raw: unknown,
   }
 }
 
-/** rhf Resolver: `{ values, errors }` where errors is the nested rhf shape. */
+/** Read a message out of rhf's nested `formState.errors` by dotted field name. */
+export function errorMessageAt(errors: unknown, name: string): string | undefined {
+  let node: unknown = errors
+  for (const part of name.split('.')) {
+    if (!node || typeof node !== 'object') return undefined
+    node = (node as Record<string, unknown>)[part]
+  }
+  if (node && typeof node === 'object' && 'message' in node) {
+    const m = (node as { message?: unknown }).message
+    return typeof m === 'string' ? m : undefined
+  }
+  return undefined
+}
+
+export interface ResolverResult {
+  values: Values
+  errors: Record<string, unknown>
+}
+
+/**
+ * rhf-compatible resolver: `{ values, errors }` with `errors` in the nested rhf
+ * shape. Cast to `Resolver` at the `useForm` call site.
+ */
 export function makeResolver(schema: FormFlowSchema, meta: FieldMetaMap) {
-  return async (values: Values) => {
+  return async (values: Values): Promise<ResolverResult> => {
     const flat = collectErrors(schema, meta, values)
     if (flat.length === 0) return { values, errors: {} }
     const errors: Record<string, unknown> = {}
     for (const e of flat) {
-      // only the first error per field, rhf-style
       setNested(errors, e.name, { type: 'validate', message: e.message })
     }
     return { values: {}, errors }

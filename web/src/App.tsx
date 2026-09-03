@@ -3,6 +3,7 @@ import { AuthGate } from '@/app/AuthGate'
 import { Shell } from '@/app/Shell'
 import { HomePage } from '@/pages/HomePage'
 import { DesignerPage } from '@/pages/DesignerPage'
+import { FillPage } from '@/pages/FillPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 
@@ -21,6 +22,7 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="designer" element={<DesignerPage />} />
         <Route path="designer/:id" element={<DesignerPage />} />
+        <Route path="fill/:id" element={<FillPage />} />
       </Route>
     </Routes>
   )
