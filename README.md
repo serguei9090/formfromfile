@@ -44,17 +44,32 @@ cd server && go build ./... && go vet ./... && go test ./...
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.
 
+## Docker
+
+Multi-stage build (bun → `CGO_ENABLED=0 go build` → distroless static, ~14 MB):
+
+```bash
+docker build -t formfromfile .
+docker run -p 8787:8787 -v fff-data:/data formfromfile
+```
+
+The container runs as `nonroot`, listens on `0.0.0.0:8787`, and keeps its
+SQLite file in the `/data` volume. Override any of the `FFF_*` env vars above
+with `-e`. `.github/workflows/ci.yml` runs the web + server gates and a
+container smoke test (healthz, config, embedded SPA, first-user register).
+
 ## Status
 
-Phases **F0–F4b done**; **F5 (release binary + Docker + CI) pending**. See
-[`PLAN.md`](PLAN.md) for the phase log and [`docs/`](docs/) for the code
-walkthrough. AI-session guidance is in [`CLAUDE.md`](CLAUDE.md) /
-[`GEMINI.md`](GEMINI.md).
+**F0–F12 + F5 done.** See [`PLAN.md`](PLAN.md) / [`PLAN-F6.md`](PLAN-F6.md) for
+the phase log and [`docs/`](docs/) for the code walkthrough. AI-session
+guidance is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
 
-Working today: register / login / logout, admin user list, the designer
-(detect → retype fields → fill → export XML/YAML/JSON), and per-user saved
-forms (My Forms list, open, delete). Verified end-to-end against the Go
-backend.
+Working today: multi-user auth (register / login / logout, first user = admin,
+admin user list); the **template author** flow (detect XML / YAML / JSON / TOML
+/ INI / `.env` / CSV or import a JSON Schema → retype → per-field labels, help
+and validation presets → `%tokens%`); the **filler** flow (validated
+fill-only form at `/fill/:id`, export in the original format); and **sharing**
+(publish → `/f/:slug` public link → submissions collected server-side).
 
 ## Layout
 

@@ -1,0 +1,20 @@
+# everything the image build doesn't need — keeps context small + reproducible
+.git
+.github
+.claude
+**/node_modules
+web/dist
+server/cmd/formfromfile/dist/*
+!server/cmd/formfromfile/dist/.gitkeep
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+bin
+fff
+server/fff
+server/formfromfile
+**/*.log
+*.md
+docs
+PLAN*.md

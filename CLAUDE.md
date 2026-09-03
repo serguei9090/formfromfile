@@ -147,6 +147,10 @@ bun run lint       # oxlint
 go run ./cmd/formfromfile --addr 127.0.0.1:8787 --db formfromfile.db
 go test ./...
 go build -o fff ./cmd/formfromfile     # dev build; dist/ is a placeholder
+
+# docker (from repo root) — bun build web → CGO_ENABLED=0 go build → distroless
+docker build -t formfromfile .
+docker run -p 8787:8787 -v fff-data:/data formfromfile
 ```
 
 ## Status & what's next
@@ -170,8 +174,14 @@ frozen) — see [`PLAN-F6.md`](PLAN-F6.md) progress log and
 metadata + validation presets, XML-attribute/comment round-trip, `%TOKEN%`
 templates, author ⚙ panel, validated `/fill/:id`, publish + `/f/:slug` share +
 submissions, format plugins (TOML/INI/`.env`/CSV) + JSON Schema import. Extra
-deps: `smol-toml`, `papaparse` (+ `@types/papaparse`). Still open: **F5**
-(release + Docker + CI), XSD import.
+deps: `smol-toml`, `papaparse` (+ `@types/papaparse`).
+
+**F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
+`.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
+`.dockerignore`. Release build copies `web/dist` into
+`server/cmd/formfromfile/dist/` so `//go:embed all:dist` bundles the real SPA
+(`main.go` serves it when `dist/index.html` exists). Still open: XSD import,
+`v0.1.0` push/publish.
 
 **Deferred / ideas** (`PLAN.md` "Open items"): schema version history + diff,
 reverse-fill from an existing filled file, OIDC/SSO.

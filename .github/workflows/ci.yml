@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3"
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run test
+      - run: bun run lint
+
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: server/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build ./...
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [web, server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: formfromfile:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test
+        run: |
+          docker run -d --name fff -p 8787:8787 formfromfile:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8787/healthz && break
+            sleep 1
+          done
+          echo "--- healthz ---"
+          curl -fsS http://localhost:8787/healthz | grep '"ok":true'
+          echo "--- config ---"
+          curl -fsS http://localhost:8787/api/config | grep '"allowRegister":true'
+          echo "--- SPA is embedded ---"
+          curl -fsS http://localhost:8787/ | grep -qi '<title>' \
+            && echo "SPA served" || (echo "SPA missing" && exit 1)
+          echo "--- register (first user = admin) ---"
+          curl -fsS -X POST http://localhost:8787/api/auth/register \
+            -H 'content-type: application/json' \
+            -d '{"email":"ci@example.com","password":"ci-password-123"}' | grep '"role":"admin"'
+      - name: Container logs
+        if: always()
+        run: docker logs fff || true
+      - name: Cleanup
+        if: always()
+        run: docker rm -f fff || true

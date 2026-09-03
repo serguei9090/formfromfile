@@ -34,7 +34,8 @@ FormFromFile/
 
 ## Status
 
-**F0–F4b done. Only F5 (release + deploy) remains.** Code walkthrough:
+**F0–F5 + F6–F12 done.** F6–F12 (templates / validation / roles / formats)
+are logged in [`PLAN-F6.md`](PLAN-F6.md). Code walkthrough:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); HTTP contract:
 [`docs/API.md`](docs/API.md); AI-session guide: [`CLAUDE.md`](CLAUDE.md) /
 [`GEMINI.md`](GEMINI.md).
@@ -60,7 +61,13 @@ FormFromFile/
   (`users` / `sessions` / `schemas`), `//go:embed dist` for the release
   SPA, flags `-addr -db -session-secret -allow-register`. Verified: web
   builds + renders all routes; server `/healthz` → `{"ok":true}`.
-- **F1–F5** — pending.
+- **F5 done** — multi-stage `Dockerfile` (bun build → `CGO_ENABLED=0 go build`
+  with `web/dist` copied into `cmd/formfromfile/dist/` for `//go:embed` →
+  distroless static, ~14 MB, runs as `nonroot`, DB in the `/data` volume).
+  `.github/workflows/ci.yml` — web gate (build + test + lint), server gate
+  (vet + test + build), docker build + container smoke test. `.dockerignore`.
+  Verified locally: image builds, container serves the embedded SPA + `/api`,
+  first-user register, persistence across restart.
 
 ## Phases
 
