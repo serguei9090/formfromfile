@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS schemas (
   id          TEXT PRIMARY KEY,
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
-  kind        TEXT NOT NULL,                  -- 'xml' | 'yaml'
+  kind        TEXT NOT NULL,                  -- 'xml' | 'yaml' | 'json' (F12: + toml/ini/dotenv/csv)
   body        TEXT NOT NULL,
   form_json   TEXT NOT NULL DEFAULT '',
   created_at  INTEGER NOT NULL,
@@ -36,6 +36,34 @@ CREATE TABLE IF NOT EXISTS schemas (
 );
 CREATE INDEX IF NOT EXISTS ix_schemas_user ON schemas(user_id, updated_at DESC);
 `
+
+// migrations are applied in order; the DB's PRAGMA user_version tracks how many
+// have run. Index i (0-based) brings the DB to user_version i+1. Never edit or
+// reorder a shipped entry — only append.
+var migrations = []string{
+	// v1 — template publish/share columns (used by F11; added now so there is a
+	// single migration rather than three).
+	`ALTER TABLE schemas ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private';
+	 ALTER TABLE schemas ADD COLUMN share_slug TEXT;
+	 ALTER TABLE schemas ADD COLUMN published_at INTEGER;`,
+}
+
+func migrate(db *sql.DB) error {
+	var v int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
+		return fmt.Errorf("read user_version: %w", err)
+	}
+	for i := v; i < len(migrations); i++ {
+		if _, err := db.Exec(migrations[i]); err != nil {
+			return fmt.Errorf("migration %d: %w", i+1, err)
+		}
+		// PRAGMA user_version cannot be parameterized; i+1 is a trusted int.
+		if _, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, i+1)); err != nil {
+			return fmt.Errorf("bump user_version to %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
 
 // Store wraps the database handle.
 type Store struct{ DB *sql.DB }
@@ -55,6 +83,10 @@ func Open(dsn string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
+	}
+	if err := migrate(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return &Store{DB: db}, nil
 }

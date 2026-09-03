@@ -39,14 +39,16 @@ type schemaBody struct {
 	FormJSON string `json:"formJson"`
 }
 
+// validKinds is the set of accepted schema formats. F12 extends this as new
+// format plugins land.
+var validKinds = map[string]bool{"xml": true, "yaml": true, "json": true}
+
 func (b schemaBody) validate() (store.Schema, string) {
 	name := strings.TrimSpace(b.Name)
 	if name == "" {
 		return store.Schema{}, "a name is required"
 	}
-	switch b.Kind {
-	case "xml", "yaml", "json":
-	default:
+	if !validKinds[b.Kind] {
 		return store.Schema{}, "kind must be xml, yaml or json"
 	}
 	if len(b.Body) > store.MaxSchemaBody || len(b.FormJSON) > store.MaxSchemaBody {

@@ -17,6 +17,8 @@ import {
   type FieldType,
   type FormFlowSchema,
 } from '@/core/form_flow/schemaModel'
+import { pruneMetaMap, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
+import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
 import { useSchemasStore } from '@/stores/schemasStore'
 
 const parser = new FormFlowParser()
@@ -34,6 +36,8 @@ export function DesignerPage() {
 
   const [source, setSource] = useState('')
   const [schema, setSchema] = useState<FormFlowSchema | null>(null)
+  const [meta, setMeta] = useState<FieldMetaMap>({})
+  const [tokens, setTokens] = useState<TokenSpec[]>([])
   const [name, setName] = useState('')
   const [parseError, setParseError] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -47,18 +51,22 @@ export function DesignerPage() {
     void getSchema(id).then((rec) => {
       setName(rec.name)
       setSource(rec.body)
-      try {
-        const saved = JSON.parse(rec.formJson) as { schema: FormFlowSchema; values: Values }
+      const saved = parseStoredForm(rec.formJson)
+      if (saved) {
         setSchema(saved.schema)
+        setMeta(saved.meta)
+        setTokens(saved.tokens)
         form.reset(saved.values)
-      } catch {
-        try {
-          const s = parser.parse(rec.body)
-          setSchema(s)
-          form.reset(defaultValuesFromFields(s.fields))
-        } catch (e) {
-          setParseError(msg(e))
-        }
+        return
+      }
+      try {
+        const s = parser.parse(rec.body)
+        setSchema(s)
+        setMeta({})
+        setTokens([])
+        form.reset(defaultValuesFromFields(s.fields))
+      } catch (e) {
+        setParseError(msg(e))
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,6 +76,8 @@ export function DesignerPage() {
     try {
       const s = parser.parse(source)
       setSchema(s)
+      setMeta({})
+      setTokens([])
       setParseError('')
       setOutput(null)
       form.reset(defaultValuesFromFields(s.fields))
@@ -83,6 +93,7 @@ export function DesignerPage() {
       if (!s) return s
       const next = { ...s, fields: setFieldTypeAt(s.fields, path, type) }
       form.reset(defaultValuesFromFields(next.fields))
+      setMeta((m) => pruneMetaMap(m, next.fields))
       setOutput(null)
       return next
     })
@@ -116,7 +127,7 @@ export function DesignerPage() {
         name: name.trim() || 'Untitled form',
         kind: schema.format,
         body: source,
-        formJson: JSON.stringify({ schema, values: form.getValues() }),
+        formJson: serializeStoredForm({ schema, values: form.getValues(), meta, tokens }),
       }
       if (id) {
         await update(id, payload)
@@ -197,6 +208,8 @@ export function DesignerPage() {
                 className="mt-4"
                 onClick={() => {
                   setSchema(null)
+                  setMeta({})
+                  setTokens([])
                   setOutput(null)
                 }}
               >
