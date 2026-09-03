@@ -176,10 +176,14 @@ templates, author ⚙ panel, validated `/fill/:id`, publish + `/f/:slug` share +
 submissions, format plugins (TOML/INI/`.env`/CSV) + JSON Schema import. Extra
 deps: `smol-toml`, `papaparse` (+ `@types/papaparse`).
 
-**Polish backlog:** [`PLAN-F13.md`](PLAN-F13.md) — format fidelity (comment/order
-preserving YAML + `.env`), designer UX (collapsible tree, Fill preview, token
-authoring), submissions export/delete, code-split + a11y + responsive,
-Playwright e2e + `golangci-lint` + error surfacing, onboarding samples.
+**Polish F13–F18 done** (see [`PLAN-F13.md`](PLAN-F13.md) progress log):
+comment/order-preserving YAML (`yaml/richYaml.ts`) + `.env` line model,
+`smartScalar` (finding #8), route code-split (208 kB initial) + a11y,
+`httpapi` handler tests + `golangci-lint` + offline banners + Docker
+`HEALTHCHECK`, collapsible/filterable schema tree + Design/Fill toggle,
+submission delete + CSV + fill-draft autosave, sample gallery + first-run tip.
+Deferred: XML inline-comment position, per-token metadata, zip/QR, Playwright,
+README screenshots.
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

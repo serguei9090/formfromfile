@@ -38,7 +38,7 @@ One SQLite file. Three tables: `users`, `sessions`, `schemas` (see
 | File | What it does |
 |------|--------------|
 | `main.tsx` | Mounts `<App/>` inside `<BrowserRouter>`. |
-| `App.tsx` | Route table. Public: `/login`, `/register`. Authed: everything under `<AuthGate><Shell/></AuthGate>` — `/` (My Forms), `/designer`, `/designer/:id`. |
+| `App.tsx` | Route table, every page `React.lazy` behind one `<Suspense>`. Public: `/login`, `/register`, `/f/:slug` (share fill). Authed under `<AuthGate><Shell/></AuthGate>`: `/` (My Forms), `/designer`, `/designer/:id`, `/fill/:id`, `/schemas/:id/submissions`. |
 | `index.css` | Tailwind v4 import + the **emerald theme**: CSS custom properties on `:root`, redefined under `.dark`, exposed to Tailwind via `@theme inline`. The radiant green-leaf page background is two radial gradients on `body`. |
 | `app/Shell.tsx` | Sticky header (leaf mark, signed-in email, theme toggle, Sign out) + `<Outlet/>`. Calls `useApplyTheme()`. |
 | `app/AuthGate.tsx` | On mount: registers the 401 handler (`setUnauthorizedHandler`) and calls `authStore.refresh()`. While `loading` → a pulsing leaf. Then renders children, or `<Navigate to="/login">`. |
