@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Check, FilePlus2, Link2, PencilLine, SquarePen, Trash2 } from 'lucide-react'
+import { Check, Copy, FilePlus2, Link2, PencilLine, SquarePen, Trash2 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { SAMPLES } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
 
@@ -11,11 +12,17 @@ export function HomePage() {
   const list = useSchemasStore((s) => s.list)
   const loading = useSchemasStore((s) => s.loading)
   const error = useSchemasStore((s) => s.error)
+  const filter = useSchemasStore((s) => s.filter)
+  const setFilter = useSchemasStore((s) => s.setFilter)
   const refresh = useSchemasStore((s) => s.refresh)
   const remove = useSchemasStore((s) => s.remove)
   const publish = useSchemasStore((s) => s.publish)
   const unpublish = useSchemasStore((s) => s.unpublish)
+  const fork = useSchemasStore((s) => s.fork)
   const [copied, setCopied] = useState('')
+
+  const allFolders = [...new Set(list.map((s) => s.folder).filter(Boolean))].sort()
+  const allTags = [...new Set(list.flatMap((s) => s.tags))].sort()
 
   async function share(id: string, slug?: string) {
     const s = slug ?? (await publish(id)).shareSlug
@@ -48,6 +55,37 @@ export function HomePage() {
         </Link>
       </div>
 
+      {list.length > 0 || filter.q || filter.folder || filter.tag ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={filter.q ?? ''}
+            onChange={(e) => setFilter({ ...filter, q: e.target.value || undefined })}
+            placeholder="Search forms…"
+            className="h-8 w-48"
+          />
+          {allFolders.map((f) => (
+            <button
+              key={f}
+              className={`rounded px-2 py-1 text-xs ${filter.folder === f ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              onClick={() =>
+                setFilter({ ...filter, folder: filter.folder === f ? undefined : f })
+              }
+            >
+              {f}
+            </button>
+          ))}
+          {allTags.map((t) => (
+            <button
+              key={t}
+              className={`rounded px-2 py-1 text-xs ${filter.tag === t ? 'bg-primary text-primary-foreground' : 'bg-accent'}`}
+              onClick={() => setFilter({ ...filter, tag: filter.tag === t ? undefined : t })}
+            >
+              #{t}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {error ? (
         <Card className="border-destructive/40 p-4 text-sm text-destructive" role="alert">
           {error} ·{' '}
@@ -59,6 +97,13 @@ export function HomePage() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : list.length === 0 && (filter.q || filter.folder || filter.tag) ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Nothing matches.{' '}
+          <button className="underline" onClick={() => setFilter({})}>
+            Clear filters
+          </button>
+        </Card>
       ) : list.length === 0 ? (
         <div className="space-y-4">
           <Card className="p-6 text-sm text-muted-foreground">
@@ -94,15 +139,23 @@ export function HomePage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{s.name}</span>
-                  {s.visibility === 'shared' ? (
+                  {s.status === 'published' ? (
                     <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
-                      shared
+                      published
                     </span>
+                  ) : (
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                      draft
+                    </span>
+                  )}
+                  {s.forkedFrom ? (
+                    <span className="text-[10px] text-muted-foreground">fork</span>
                   ) : null}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  <span className="uppercase">{s.kind}</span> · edited{' '}
-                  {new Date(s.updatedAt).toLocaleString()}
+                  <span className="uppercase">{s.kind}</span> · v{s.currentVersion} · edited{' '}
+                  {new Date(s.updatedAt).toLocaleDateString()}
+                  {s.folder ? ` · ${s.folder}` : ''}
                   {s.visibility === 'shared' ? (
                     <>
                       {' · '}
@@ -140,6 +193,15 @@ export function HomePage() {
               >
                 <SquarePen className="size-4" />
               </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Duplicate"
+                title="Duplicate / fork"
+                onClick={() => void fork(s.id)}
+              >
+                <Copy className="size-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

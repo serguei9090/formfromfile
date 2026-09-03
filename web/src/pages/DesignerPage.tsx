@@ -17,7 +17,7 @@ import {
   type FieldType,
   type FormFlowSchema,
 } from '@/core/form_flow/schemaModel'
-import type { SchemaKind } from '@/api/types'
+import type { SchemaKind, TemplateVersion } from '@/api/types'
 import { pruneMetaMap, setMetaAt, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
 import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
@@ -44,6 +44,8 @@ export function DesignerPage() {
   const create = useSchemasStore((s) => s.create)
   const update = useSchemasStore((s) => s.update)
   const getSchema = useSchemasStore((s) => s.get)
+  const listVersions = useSchemasStore((s) => s.versions)
+  const rollback = useSchemasStore((s) => s.rollback)
 
   const [source, setSource] = useState('')
   const [schema, setSchema] = useState<FormFlowSchema | null>(null)
@@ -59,6 +61,10 @@ export function DesignerPage() {
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
   const [preview, setPreview] = useState(false)
+  const [saveNotes, setSaveNotes] = useState('')
+  const [folder, setFolder] = useState('')
+  const [tagsText, setTagsText] = useState('')
+  const [history, setHistory] = useState<TemplateVersion[] | null>(null)
   const [tipHidden, setTipHidden] = useState(() => {
     try {
       return localStorage.getItem('fff:tip:designer') === '1'
@@ -81,6 +87,8 @@ export function DesignerPage() {
     if (!id) return
     void getSchema(id).then((rec) => {
       setName(rec.name)
+      setFolder(rec.folder ?? '')
+      setTagsText((rec.tags ?? []).join(', '))
       setSource(rec.body)
       const saved = parseStoredForm(rec.formJson)
       if (saved) {
@@ -204,6 +212,12 @@ export function DesignerPage() {
         name: name.trim() || 'Untitled form',
         kind: formatId as SchemaKind,
         body: source,
+        folder: folder.trim(),
+        tags: tagsText
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean),
+        notes: saveNotes.trim(),
         formJson: serializeStoredForm({
           schema,
           values: form.getValues(),
@@ -216,6 +230,7 @@ export function DesignerPage() {
       }
       if (id) {
         await update(id, payload)
+        setSaveNotes('')
       } else {
         const rec = await create(payload)
         navigate(`/designer/${rec.id}`, { replace: true })
@@ -262,10 +277,30 @@ export function DesignerPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Form name"
-              className="h-9 w-48"
+              className="h-9 w-40"
             />
+            <Input
+              value={folder}
+              onChange={(e) => setFolder(e.target.value)}
+              placeholder="Folder"
+              className="h-9 w-28"
+            />
+            <Input
+              value={tagsText}
+              onChange={(e) => setTagsText(e.target.value)}
+              placeholder="tags, comma"
+              className="h-9 w-32"
+            />
+            {id ? (
+              <Input
+                value={saveNotes}
+                onChange={(e) => setSaveNotes(e.target.value)}
+                placeholder="What changed? (version note)"
+                className="h-9 w-48"
+              />
+            ) : null}
             <Button onClick={() => void save()} disabled={saving}>
-              <Save className="size-4" /> {id ? 'Save' : 'Save new'}
+              <Save className="size-4" /> {id ? 'Save version' : 'Save new'}
             </Button>
           </>
         ) : null}
@@ -353,6 +388,42 @@ export function DesignerPage() {
                   />
                   Keep comments in their exact position (slower, rebuilds repeated blocks)
                 </label>
+              ) : null}
+              {id ? (
+                <div className="mt-3">
+                  <button
+                    className="text-xs text-muted-foreground underline"
+                    onClick={async () =>
+                      setHistory(history ? null : await listVersions(id))
+                    }
+                  >
+                    {history ? 'Hide' : 'Show'} version history
+                  </button>
+                  {history ? (
+                    <ul className="mt-2 space-y-1 text-xs">
+                      {history.map((v) => (
+                        <li key={v.id} className="flex items-center gap-2">
+                          <span className="font-mono">v{v.version}</span>
+                          <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                            {v.notes || '—'} · {new Date(v.createdAt).toLocaleDateString()}
+                          </span>
+                          {v.version !== history[0].version ? (
+                            <button
+                              className="text-primary underline"
+                              onClick={async () => {
+                                if (!confirm(`Roll back to v${v.version}?`)) return
+                                await rollback(id, v.version)
+                                location.reload()
+                              }}
+                            >
+                              roll back
+                            </button>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
               ) : null}
               <Button
                 variant="ghost"

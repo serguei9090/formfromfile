@@ -45,7 +45,18 @@ needed). F27 stays parked.
   on the fill screen; submission detail shows submitted-vs-default diff + a
   "Re-run on current template" that pre-fills `/fill/:id`. +6 tests, E2E
   verified.
-- **F21–F26** — in progress (F24 deferred, F27 parked).
+- **F21 done** — migration v3: `template_versions` + `schemas` columns
+  (`current_version` / `status` / `folder` / `tags` / `forked_from` /
+  `requires_approval`) + `submissions` columns (`template_version` / `status` /
+  review). Store: version-on-update, `ListVersions` / `GetVersion` /
+  `RollbackSchema` / `ForkSchema` / `SetApprovalGate` / `ReviewSubmission`;
+  `ListSchemas` gains a folder/tag/query filter. Routes: `/schemas/{id}/`
+  `fork` · `versions` · `versions/{n}` · `rollback/{n}` · `approval`,
+  `/submissions/{id}/review`. Frontend: designer version-note + folder/tags
+  inputs + history panel with rollback; HomePage search + folder/tag chips +
+  fork + draft/published badge; SubmissionsPage status badges + approve/reject
+  + the approval-gate toggle. +go tests, E2E verified.
+- **F22–F26** — in progress (F24 deferred, F27 parked).
 
 ---
 

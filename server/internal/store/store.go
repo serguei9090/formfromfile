@@ -58,6 +58,33 @@ var migrations = []string{
 	 );
 	 CREATE INDEX ix_submissions_template ON submissions(template_id, created_at DESC);
 	 CREATE UNIQUE INDEX ix_schemas_slug ON schemas(share_slug) WHERE share_slug IS NOT NULL;`,
+
+	// v3 — template lifecycle (F21): version history, draft/publish status,
+	// folders + tags, fork lineage, approval gate.
+	`CREATE TABLE template_versions (
+	   id           TEXT PRIMARY KEY,
+	   template_id  TEXT NOT NULL REFERENCES schemas(id) ON DELETE CASCADE,
+	   version      INTEGER NOT NULL,
+	   body         TEXT NOT NULL DEFAULT '',
+	   form_json    TEXT NOT NULL DEFAULT '',
+	   notes        TEXT NOT NULL DEFAULT '',
+	   created_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+	   created_at   INTEGER NOT NULL
+	 );
+	 CREATE UNIQUE INDEX ix_tv ON template_versions(template_id, version);
+	 ALTER TABLE schemas ADD COLUMN current_version INTEGER NOT NULL DEFAULT 1;
+	 ALTER TABLE schemas ADD COLUMN status TEXT NOT NULL DEFAULT 'draft';
+	 ALTER TABLE schemas ADD COLUMN folder TEXT NOT NULL DEFAULT '';
+	 ALTER TABLE schemas ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+	 ALTER TABLE schemas ADD COLUMN forked_from TEXT;
+	 ALTER TABLE schemas ADD COLUMN requires_approval INTEGER NOT NULL DEFAULT 0;
+	 ALTER TABLE submissions ADD COLUMN template_version INTEGER;
+	 ALTER TABLE submissions ADD COLUMN status TEXT NOT NULL DEFAULT 'approved';
+	 ALTER TABLE submissions ADD COLUMN reviewed_by TEXT REFERENCES users(id) ON DELETE SET NULL;
+	 ALTER TABLE submissions ADD COLUMN review_note TEXT NOT NULL DEFAULT '';
+	 UPDATE schemas SET status = 'published' WHERE visibility = 'shared';
+	 INSERT INTO template_versions (id, template_id, version, body, form_json, notes, created_at)
+	   SELECT lower(hex(randomblob(12))), id, 1, body, form_json, 'initial', created_at FROM schemas;`,
 }
 
 func migrate(db *sql.DB) error {

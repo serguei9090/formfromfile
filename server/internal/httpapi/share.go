@@ -15,12 +15,7 @@ import (
 
 func (h *handlers) listSubmissions(w http.ResponseWriter, r *http.Request) {
 	subs, err := h.opts.Store.ListSubmissions(currentUser(r).ID, chi.URLParam(r, "id"))
-	if errors.Is(err, store.ErrNotFound) {
-		writeErr(w, http.StatusNotFound, "schema not found")
-		return
-	}
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
+	if handleErr(w, err, "schema not found") {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"submissions": subs})
@@ -41,12 +36,23 @@ func (h *handlers) deleteSubmission(w http.ResponseWriter, r *http.Request) {
 
 func (h *handlers) getSubmission(w http.ResponseWriter, r *http.Request) {
 	sub, err := h.opts.Store.GetSubmission(currentUser(r).ID, chi.URLParam(r, "id"))
-	if errors.Is(err, store.ErrNotFound) {
-		writeErr(w, http.StatusNotFound, "submission not found")
+	if handleErr(w, err, "submission not found") {
 		return
 	}
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
+	writeJSON(w, http.StatusOK, map[string]any{"submission": sub})
+}
+
+func (h *handlers) reviewSubmission(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Approved bool   `json:"approved"`
+		Note     string `json:"note"`
+	}
+	if err := decode(w, r, &b); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad request body")
+		return
+	}
+	sub, err := h.opts.Store.ReviewSubmission(currentUser(r).ID, chi.URLParam(r, "id"), b.Approved, b.Note)
+	if handleErr(w, err, "submission not found") {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"submission": sub})

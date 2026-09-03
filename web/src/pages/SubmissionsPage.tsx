@@ -9,6 +9,7 @@ import { DiffView } from '@/designer/DiffView'
 import { parseStoredForm } from '@/formflow_ext/templateModel'
 import { parseSource } from '@/formflow_ext/formats'
 import { alignValues } from '@/formflow_ext/reverseFill'
+import { useSchemasStore } from '@/stores/schemasStore'
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -44,6 +45,7 @@ export function SubmissionsPage() {
   const [open, setOpen] = useState<SubmissionRecord | null>(null)
   const [template, setTemplate] = useState<SchemaRecord | null>(null)
   const [error, setError] = useState('')
+  const setApproval = useSchemasStore((s) => s.setApproval)
 
   useEffect(() => {
     if (!id) return
@@ -74,6 +76,20 @@ export function SubmissionsPage() {
     try {
       const { submission } = await api.get<{ submission: SubmissionRecord }>(`/submissions/${sid}`)
       setOpen(submission)
+    } catch (e) {
+      setError(msg(e))
+    }
+  }
+
+  async function review(sid: string, approved: boolean) {
+    const note = approved ? '' : prompt('Reason (optional):') ?? ''
+    try {
+      const { submission } = await api.post<{ submission: SubmissionRecord }>(
+        `/submissions/${sid}/review`,
+        { approved, note },
+      )
+      setOpen(submission)
+      setList((l) => (l ? l.map((s) => (s.id === sid ? { ...s, status: submission.status } : s)) : l))
     } catch (e) {
       setError(msg(e))
     }
@@ -153,6 +169,21 @@ export function SubmissionsPage() {
           </Button>
         ) : null}
       </div>
+
+      {template ? (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            className="size-3.5 accent-primary"
+            checked={template.requiresApproval}
+            onChange={async (e) => {
+              const updated = await setApproval(template.id, e.target.checked)
+              setTemplate(updated)
+            }}
+          />
+          Require review before a submission counts (approval queue)
+        </label>
+      ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       {list == null ? (
@@ -166,9 +197,19 @@ export function SubmissionsPage() {
           {list.map((s) => (
             <Card key={s.id} className="flex items-center gap-3 p-3 text-sm">
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{s.submitter || 'Anonymous'}</div>
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{s.submitter || 'Anonymous'}</span>
+                  {s.status !== 'approved' ? (
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${s.status === 'pending' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : 'bg-destructive/15 text-destructive'}`}
+                    >
+                      {s.status}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {new Date(s.createdAt).toLocaleString()}
+                  {s.templateVersion ? ` · v${s.templateVersion}` : ''}
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => void view(s.id)}>
@@ -201,6 +242,16 @@ export function SubmissionsPage() {
                 <Button variant="ghost" size="sm" onClick={() => reRun(open)}>
                   <RotateCcw className="size-3.5" /> Re-run on current template
                 </Button>
+              ) : null}
+              {open.status === 'pending' ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => void review(open.id, true)}>
+                    Approve
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void review(open.id, false)}>
+                    Reject
+                  </Button>
+                </>
               ) : null}
               <Button variant="ghost" size="sm" onClick={() => setOpen(null)}>
                 Close

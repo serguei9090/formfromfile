@@ -202,6 +202,82 @@ func TestAuthAndScopeGuards(t *testing.T) {
 	}
 }
 
+func TestVersioningForkAndApproval(t *testing.T) {
+	e := newEnv(t)
+	owner := e.authed(t)
+
+	_, out := e.do(t, owner, "POST", "/api/schemas", map[string]any{
+		"name": "T", "kind": "yaml", "body": "a: 1", "formJson": "{}", "folder": "infra",
+		"tags": []string{"prod"},
+	})
+	id := out["schema"].(map[string]any)["id"].(string)
+
+	// folder filter (before any edit)
+	_, fout := e.do(t, owner, "GET", "/api/schemas?folder=infra", nil)
+	if len(fout["schemas"].([]any)) != 1 {
+		t.Fatalf("folder filter: %v", fout)
+	}
+	_, fout = e.do(t, owner, "GET", "/api/schemas?folder=nope", nil)
+	if len(fout["schemas"].([]any)) != 0 {
+		t.Fatalf("folder filter miss: %v", fout)
+	}
+
+	// update -> new version with a note (carries folder forward)
+	res, out := e.do(t, owner, "PUT", "/api/schemas/"+id, map[string]any{
+		"name": "T", "kind": "yaml", "body": "a: 2", "formJson": "{}", "notes": "bumped a",
+		"folder": "infra",
+	})
+	if res.StatusCode != http.StatusOK || out["schema"].(map[string]any)["currentVersion"].(float64) != 2 {
+		t.Fatalf("update: %d %v", res.StatusCode, out)
+	}
+
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id+"/versions", nil)
+	vs := out["versions"].([]any)
+	if len(vs) != 2 || vs[0].(map[string]any)["notes"] != "bumped a" {
+		t.Fatalf("versions: %v", vs)
+	}
+
+	// rollback to v1 -> creates v3 with v1's body
+	res, out = e.do(t, owner, "POST", "/api/schemas/"+id+"/rollback/1", nil)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("rollback: %d", res.StatusCode)
+	}
+	res, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	if out["schema"].(map[string]any)["body"] != "a: 1" {
+		t.Fatalf("rollback body: %v", out["schema"])
+	}
+
+	// fork
+	res, out = e.do(t, owner, "POST", "/api/schemas/"+id+"/fork", nil)
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("fork: %d", res.StatusCode)
+	}
+	forkID := out["schema"].(map[string]any)["id"].(string)
+	if forkID == id {
+		t.Fatal("fork reused the id")
+	}
+
+	// approval gate: publish, turn on review, submit -> pending
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/approval", map[string]bool{"requiresApproval": true})
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	slug := out["schema"].(map[string]any)["shareSlug"].(string)
+
+	e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"valuesJson": "{}", "output": "x"})
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id+"/submissions", nil)
+	sub := out["submissions"].([]any)[0].(map[string]any)
+	if sub["status"] != "pending" {
+		t.Fatalf("gated submission status = %v, want pending", sub["status"])
+	}
+	subID := sub["id"].(string)
+	res, out = e.do(t, owner, "POST", "/api/submissions/"+subID+"/review",
+		map[string]any{"approved": true, "note": ""})
+	if res.StatusCode != http.StatusOK || out["submission"].(map[string]any)["status"] != "approved" {
+		t.Fatalf("review: %d %v", res.StatusCode, out)
+	}
+}
+
 func TestHealthAndConfig(t *testing.T) {
 	e := newEnv(t)
 	res, out := e.do(t, e.anon, "GET", "/healthz", nil)
