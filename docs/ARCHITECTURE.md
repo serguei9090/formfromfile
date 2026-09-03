@@ -87,6 +87,34 @@ One SQLite file. Three tables: `users`, `sessions`, `schemas` (see
   (persistence port — currently unused; the app talks to the backend directly
   via `schemasStore`).
 
+### The extension layer (`formflow_ext/`, **FormFromFile-only**)
+
+Everything the app adds on top of the frozen core lives here (see
+[`../PLAN-F6.md`](../PLAN-F6.md) → "keep the verbatim core frozen"). No imports
+from `core/**` internals, no React.
+
+- `fieldMeta.ts` — `FieldMeta` (label / help / editable / required / pattern /
+  preset / enumValues / min·max·step / numberFormat), keyed by **dotted field
+  path** (`"Services.FTP.FTPPort"`, array items un-indexed). `walkPaths`,
+  immutable `setMetaAt`, `pruneMetaMap` (drop meta whose path vanished after a
+  retype). `FieldMetaMap = Record<FieldPath, FieldMeta>`.
+- `templateModel.ts` — `FormTemplate = { schema, meta, tokens }` + `TokenSpec`.
+  `parseStoredForm(raw)` tolerantly decodes a saved form's `formJson`: the v2
+  `{ schema, values, meta, tokens }` shape *and* the F4b-era `{ schema, values }`
+  one. `serializeStoredForm` writes v2.
+- `xml/richXml.ts` — attribute- and comment-preserving XML (the core sets
+  `ignoreAttributes: true` and drops the `<?xml?>` line). `parseRichXml(raw)` →
+  `{ schema, seed }`: attributes become leaf fields keyed `@_name` (label = bare
+  name), mixed text → `#text`, comments → passthrough fields keyed `#comment`
+  (re-emitted verbatim, filtered from the UIs via `isStructuralKey`, position
+  not preserved). `seed` has **one array item per source occurrence**.
+  `renderRichXml(schema, values, source)` rebuilds, restoring the declaration
+  and leading comments from `source`. `xml/__fixtures__/` holds the ILS test
+  file; `richXml.test.ts` asserts a lossless round trip.
+
+`DesignerPage` uses `parseRichXml` / `renderRichXml` whenever `schema.format ===
+'xml'`, and threads `meta` + `tokens` through load / detect / retype / save.
+
 ### The designer (`designer/` + `pages/DesignerPage.tsx`)
 
 `DesignerPage` is the orchestrator:
@@ -231,8 +259,8 @@ to `/designer/:id`.
 ## 5. Tests
 
 ```bash
-cd web    && bun run test     # 15: 14 parser + 1 cn()
-cd server && go test ./...     # auth (7) + store (1 cross-user CRUD)
+cd web    && bun run test     # 31: 14 parser + 1 cn() + 8 fieldMeta + 8 richXml
+cd server && go test ./...     # auth (7) + store (1 CRUD + 2 migration)
 ```
 
 Add backend tests with a temp-file SQLite: `store.Open(filepath.Join(t.TempDir(),

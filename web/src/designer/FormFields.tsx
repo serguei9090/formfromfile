@@ -9,6 +9,7 @@ import {
   isScalarArrayTemplate,
   type SchemaField,
 } from '@/core/form_flow/schemaModel'
+import { isStructuralKey } from '@/formflow_ext/xml/richXml'
 
 type Values = Record<string, unknown>
 
@@ -21,9 +22,11 @@ export interface FieldCtx {
 export function FormFields({ fields, prefix, ctx }: { fields: SchemaField[]; prefix: string; ctx: FieldCtx }) {
   return (
     <div className="space-y-3">
-      {fields.map((f) => (
-        <FieldRow key={f.key} field={f} name={prefix ? `${prefix}.${f.key}` : f.key} ctx={ctx} />
-      ))}
+      {fields
+        .filter((f) => !isStructuralKey(f.key))
+        .map((f) => (
+          <FieldRow key={f.key} field={f} name={prefix ? `${prefix}.${f.key}` : f.key} ctx={ctx} />
+        ))}
     </div>
   )
 }

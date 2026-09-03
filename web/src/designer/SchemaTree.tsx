@@ -1,5 +1,6 @@
 import { Select } from '@/components/ui/select'
 import { FIELD_TYPE_LABELS, type FieldType, type SchemaField } from '@/core/form_flow/schemaModel'
+import { isStructuralKey } from '@/formflow_ext/xml/richXml'
 
 const TYPES: FieldType[] = ['text', 'number', 'boolean', 'object', 'array']
 
@@ -15,6 +16,7 @@ export function SchemaTree({
   return (
     <ul className={path.length ? 'ml-4 space-y-1 border-l border-border/50 pl-3' : 'space-y-1'}>
       {fields.map((f, i) => {
+        if (isStructuralKey(f.key)) return null
         const here = [...path, i]
         return (
           <li key={f.key} className="space-y-1">

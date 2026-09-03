@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This is the Simple template for tool frameworks.  It contains the most common services, 'FTP without authorization' and 'full control RTO'.
+   See ILS.Example for more details, other services, other options.
+-->
+<Tool>
+    <Name>DEFAULT</Name>
+    <Desc>full name and description of ILS.Simple tool v1.0</Desc>
+    <Type>Simple</Type>
+    <Manufacturer>ILS</Manufacturer>
+    <Inherited>false</Inherited>
+    
+    <!-- set false if tool does not have TCS or TCS version < 3.1 -->
+    <TCSEnableToolServiceStatusQuery>true</TCSEnableToolServiceStatusQuery>
+
+    <Common.Tool>
+		<FTPNewAlgorithm>true</FTPNewAlgorithm>
+	</Common.Tool>
+
+    <Services>
+		  
+	<!-- FTP without authorization: passive -->
+        <FTP>
+			<FTPServiceName>FTP</FTPServiceName>
+			<FTPUser>ftpacct</FTPUser>
+			<FTPPassword>password</FTPPassword>
+			<FTPPort>21</FTPPort>
+			<FTPMode>Passive</FTPMode>
+			<FTPAccessFiles>(R)*,(WOD)*</FTPAccessFiles>
+			<FTPTCSPort>9000</FTPTCSPort>
+			<FTPApprovalRequired>false</FTPApprovalRequired>
+		</FTP>
+
+
+ 	<!-- full control RTO authorization required with optional bypass (manned production tool) 
+      omit AutoPermitActive for no bypass -->
+      <RemoteToolOperation>
+            <RTOServiceName>RTO</RTOServiceName>
+            <RTOPassword>vncpassword</RTOPassword>
+            <RTOPort>5900</RTOPort>
+            <RTOOperations>Operate,Monitor,TCS admin confirm,AutoPermitActive</RTOOperations>
+            <RTOAccessServerPort>9000</RTOAccessServerPort>
+            <RTOApprovalRequired>true</RTOApprovalRequired>
+           <RTOAllowAutomaticApproval>true</RTOAllowAutomaticApproval>
+        </RemoteToolOperation>
+		
+    </Services>
+ 
+          <!--  tool instance template for form-based registration  -->
+   
+    <newToolUI>
+  <fields>
+      <field editor="Toolname" isRequired="true" name="Name"/>   
+      <field editor="IPv4-or-Hostname" isRequired="true" name="IP Address"/>
+  </fields>
+  <instanceXML>
+    <Name>%Name%</Name>
+    <Desc>full name and description of ILS.Simple tool v1.0</Desc>
+    <Type>Simple</Type>
+    <Manufacturer>ILS</Manufacturer>
+    <Inherited>true</Inherited>
+	<ChatConfiguration>%IP Address%:9000</ChatConfiguration>
+	<Services>
+
+		<FTP>
+			<FTPServiceName>FTP</FTPServiceName>
+			<FTPHostName>%IP Address%</FTPHostName>
+			<FTPTCSHostName>%IP Address%</FTPTCSHostName>
+		</FTP>
+
+		<RemoteToolOperation>
+			<RTOServiceName>RTO</RTOServiceName>
+			<RTOHostName>%IP Address%</RTOHostName>
+			<RTOAccessServerHostName>%IP Address%</RTOAccessServerHostName>
+    </RemoteToolOperation>
+	</Services>
+
+  </instanceXML>
+</newToolUI>
+
+
+</Tool>

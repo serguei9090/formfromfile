@@ -19,6 +19,7 @@ import {
 } from '@/core/form_flow/schemaModel'
 import { pruneMetaMap, type FieldMetaMap } from '@/formflow_ext/fieldMeta'
 import { parseStoredForm, serializeStoredForm, type TokenSpec } from '@/formflow_ext/templateModel'
+import { parseRichXml, renderRichXml } from '@/formflow_ext/xml/richXml'
 import { useSchemasStore } from '@/stores/schemasStore'
 
 const parser = new FormFlowParser()
@@ -75,12 +76,14 @@ export function DesignerPage() {
   function detect() {
     try {
       const s = parser.parse(source)
-      setSchema(s)
+      // XML: re-parse with attributes + comments preserved (core drops them).
+      const rich = s.format === 'xml' ? parseRichXml(source) : null
+      setSchema(rich?.schema ?? s)
       setMeta({})
       setTokens([])
       setParseError('')
       setOutput(null)
-      form.reset(defaultValuesFromFields(s.fields))
+      form.reset(rich?.seed ?? defaultValuesFromFields(s.fields))
       if (!name) setName('Untitled form')
     } catch (e) {
       setParseError(msg(e))
@@ -102,7 +105,11 @@ export function DesignerPage() {
   function doExport() {
     if (!schema) return
     try {
-      setOutput(parser.render(schema, form.getValues()))
+      const out =
+        schema.format === 'xml'
+          ? renderRichXml(schema, form.getValues(), source)
+          : parser.render(schema, form.getValues())
+      setOutput(out)
     } catch (e) {
       setParseError(msg(e))
     }
