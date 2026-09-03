@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router'
+import { AuthGate } from '@/app/AuthGate'
 import { Shell } from '@/app/Shell'
 import { HomePage } from '@/pages/HomePage'
 import { DesignerPage } from '@/pages/DesignerPage'
@@ -10,7 +11,13 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route element={<Shell />}>
+      <Route
+        element={
+          <AuthGate>
+            <Shell />
+          </AuthGate>
+        }
+      >
         <Route index element={<HomePage />} />
         <Route path="designer" element={<DesignerPage />} />
         <Route path="designer/:id" element={<DesignerPage />} />
