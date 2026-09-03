@@ -76,6 +76,16 @@ with an empty `meta` / `tokens` and behave exactly as before.
 
 ---
 
+## Progress
+
+- **F6 done** (`a190987`) — `formflow_ext/{fieldMeta,templateModel}.ts`, DesignerPage
+  plumbs `meta`/`tokens`, `PRAGMA user_version` migration runner + v1 columns
+  (`visibility`/`share_slug`/`published_at`), `validKinds` var. +8 web, +2 go tests.
+- **F7 done** (`d596f1b`) — `formflow_ext/xml/richXml.ts`: XML attributes, `#text`,
+  comments, `<?xml?>` declaration, N-item array seeding. Fixes findings 1–3.
+  +8 web tests, E2E verified.
+- **F8–F12** — pending.
+
 ## Phases
 
 Ship order is roughly value-first: **F6 → F7 → F8 → F9 → F10 → F11 → F12**, but
