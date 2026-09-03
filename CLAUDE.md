@@ -193,9 +193,12 @@ reverse-fill from an existing filled file, OIDC/SSO.
 
 ## Known rough edges
 
-- `DesignerPage` retype re-seeds the whole form with detected defaults (loses
-  entered values). Documented in the UI. A smarter per-branch reset is a TODO.
+- Retype re-seeds only the branch whose shape changed (F9 `reseedPreserving`) —
+  other branches keep their entered values. Changing a leaf's type still
+  clears that one field.
+- XML inline comments round-trip but re-position to the top of their parent
+  element (fast-xml-parser isn't order-aware in the mode `richXml` uses).
 - Empty arrays / `null` values: same documented FormFlow-parser limitations as
-  InfraKit (see the header comment in `formFlowParser.ts`).
+  InfraKit (see the header comment in `formFlowParser.ts`). `null` → empty text.
 - Login form submit was flaky under browser automation in testing — the app
   itself is fine; use a direct `fetch` to `/api/auth/login` if scripting.

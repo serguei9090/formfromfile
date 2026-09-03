@@ -64,7 +64,13 @@ update the note in F14.
   `--healthcheck` flag (distroless has no curl). **Deferred:** Playwright e2e —
   the per-phase browser verification has covered these flows; automating the
   flaky-under-automation login is a separate task.
-- **F14, F15, F18** — pending.
+- **F14 done** (partial) — `SchemaTree` rows collapse (chevron, `aria-expanded`),
+  container rows show a child + "N set" count; a filter box on the Schema card
+  (matches key/label, keeps ancestors, force-expands); a **Design ▏ Fill
+  preview** toggle on `DesignerPage` renders `<FillForm>` against the current
+  unsaved schema/meta/tokens. `CLAUDE.md` rough-edges note corrected.
+  **Deferred:** per-token `FieldMeta`, array reorder, source-default display.
+- **F15, F18** — pending.
 
 ## Phases
 

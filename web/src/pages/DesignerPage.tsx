@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FileDropField } from '@/app/FileDropField'
 import { FormFields, type FieldCtx } from '@/designer/FormFields'
+import { FillForm } from '@/designer/FillForm'
 import { SchemaTree } from '@/designer/SchemaTree'
 import { reseedPreserving, setFieldTypeAt } from '@/designer/schemaEdit'
 import {
@@ -52,6 +53,8 @@ export function DesignerPage() {
   const [saveError, setSaveError] = useState('')
   const [output, setOutput] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [filter, setFilter] = useState('')
+  const [preview, setPreview] = useState(false)
 
   const form = useForm<Values>({ defaultValues: {} })
 
@@ -203,6 +206,20 @@ export function DesignerPage() {
         <div className="flex-1" />
         {schema ? (
           <>
+            <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">
+              <button
+                className={`px-2.5 py-1.5 ${!preview ? 'bg-primary text-primary-foreground' : ''}`}
+                onClick={() => setPreview(false)}
+              >
+                Design
+              </button>
+              <button
+                className={`px-2.5 py-1.5 ${preview ? 'bg-primary text-primary-foreground' : ''}`}
+                onClick={() => setPreview(true)}
+              >
+                Fill preview
+              </button>
+            </div>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -235,6 +252,21 @@ export function DesignerPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : preview ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Fill preview — exactly what a filler sees</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FillForm
+              key={JSON.stringify(meta) + tokens.length}
+              template={{ schema, meta, tokens, formatId }}
+              source={source}
+              initialValues={form.getValues()}
+              initialTokenValues={tokenValues}
+            />
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
           <Card>
@@ -246,11 +278,18 @@ export function DesignerPage() {
                 Set a field's type, then open <span className="text-primary">⚙</span> for label,
                 help and validation. Retyping keeps values on branches that didn't change shape.
               </p>
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filter fields…"
+                className="mb-3 h-8"
+              />
               <SchemaTree
                 fields={schema.fields}
                 onRetype={retype}
                 meta={meta}
                 onMeta={(kp, patch) => setMeta((m) => setMetaAt(m, kp, patch))}
+                filter={filter}
               />
               <Button
                 variant="ghost"
