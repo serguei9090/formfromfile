@@ -36,11 +36,15 @@ type client struct {
 	on    bool
 }
 
-// New reads FFF_ANTHROPIC_API_KEY / FFF_AI_MODEL. A disabled service is still
-// safe to call — every method returns ErrDisabled.
+// New builds the AI service. It is a **beta feature, off by default** — it
+// activates only when BOTH `FFF_ANTHROPIC_API_KEY` is set AND `FFF_AI_BETA` is
+// truthy (`true` / `1` / `yes`). A disabled service is still safe to call:
+// every method returns ErrDisabled and the HTTP routes answer 501.
+//
+// `FFF_AI_MODEL` overrides the default model (`claude-sonnet-5`).
 func New() Service {
 	key := os.Getenv("FFF_ANTHROPIC_API_KEY")
-	if key == "" {
+	if key == "" || !truthy(os.Getenv("FFF_AI_BETA")) {
 		return &client{}
 	}
 	model := anthropic.Model(os.Getenv("FFF_AI_MODEL"))
@@ -52,6 +56,14 @@ func New() Service {
 		model: model,
 		on:    true,
 	}
+}
+
+func truthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 func (c *client) Enabled() bool { return c.on }

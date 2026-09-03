@@ -358,6 +358,67 @@ lands:
 
 ---
 
+### F28 — public-internet hardening  ·  **on request only** — needed before exposing to untrusted fillers
+
+Today's posture: safe for an internal team behind a VPN / Cloudflare Access /
+nginx ACL (see [`docs/DEPLOY.md`](docs/DEPLOY.md)). The anonymous surface
+(`/f/:slug`, `/api/public/*`) is **not** hardened for the open internet. Do this
+first if public fillers are a real requirement:
+
+**Abuse & spam**
+- CAPTCHA (hCaptcha / Cloudflare Turnstile) on `POST /public/templates/{slug}/submissions`
+  — `FFF_CAPTCHA_*` config, off → current per-IP window only. (F26 deferred item.)
+- Per-slug cooldown + a global submission rate limit, not just per-IP.
+- Optional email-verify or magic-link before a submission counts.
+
+**SSRF / egress**
+- **Webhook target validation** — `POST /schemas/{id}/webhooks` must reject
+  private / loopback / link-local / metadata (`169.254.169.254`) hosts and
+  non-https, the same way `validate.go`'s `safeOutboundURL` already does for the
+  check proxy. Re-resolve at delivery time (DNS-rebinding).
+- Outbound allowlist option (`FFF_WEBHOOK_ALLOW_HOSTS`).
+- The `checkUrl` proxy: cap response size (done), add a per-template call
+  budget, consider a shared outbound proxy with its own ACL.
+
+**Transport & headers**
+- Security headers: `Content-Security-Policy` (the SPA is self-hosted, so a
+  tight CSP is feasible), `X-Content-Type-Options`, `Referrer-Policy`,
+  `Permissions-Policy`, HSTS (behind TLS).
+- `--session-secret` — either wire it (sign the cookie) or delete the flag.
+- Cookie `SameSite=Strict` for the app, keep `Lax` only where the share flow
+  needs it.
+
+**Identity & tenancy**
+- OIDC / SSO (also F27) — password-only is thin for public.
+- Workspaces / orgs — templates and users scoped to a tenant, not global; an
+  `admin` currently sees every account.
+- Optional 2FA / WebAuthn for `admin` + `author`.
+
+**Scale & durability**
+- Postgres backend option (SQLite is single-writer — fine to dozens of
+  concurrent authors, not hundreds); `store` already has no raw SQL leaks to a
+  handler, so a `pgx` adapter is contained.
+- Managed backups as part of the deploy (Litestream is the interim answer).
+- Read-path caching / CDN for the SPA assets (Cloudflare covers this).
+
+**Observability & ops**
+- Structured JSON logging (`slog`), request IDs, panic capture to Sentry-like.
+- Prometheus `/metrics` (request rate, latency, DB size, webhook success rate,
+  AI spend).
+- A global AI cost budget + alert (per-user cap exists; org cap doesn't).
+- Automated dependency + image scanning in CI (`govulncheck`, Trivy).
+
+**Legal / product**
+- Data-retention controls (auto-delete submissions after N days), export/delete
+  a user's data (GDPR), an audit-log retention window (partly done, F26).
+- ToS / privacy page, a real `/about`.
+
+Effort: **XL** — this is "turn a tool into a service". Sequence roughly
+CAPTCHA + SSRF + headers (S–M, do first) → OIDC + workspaces (L) → Postgres +
+observability (L) → the rest as needed.
+
+---
+
 ## Cross-cutting
 
 - **Migrations** — F21 (`template_versions`, new `schemas` columns), F23

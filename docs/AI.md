@@ -1,8 +1,16 @@
-# AI assist (F23)
+# AI assist (F23) — **beta, off by default**
 
-Optional. **Off unless `FFF_ANTHROPIC_API_KEY` is set** — every AI endpoint then
-returns `501 { "error": "AI features are not configured" }` and the UI hides
-its ✨ buttons.
+Not yet exercised against a live key in CI. It activates only when **both**:
+
+| env | value |
+|-----|-------|
+| `FFF_ANTHROPIC_API_KEY` | your Anthropic API key |
+| `FFF_AI_BETA` | `true` (also accepts `1` / `yes` / `on`) |
+
+Missing either → every `/api/ai/*` endpoint returns
+`501 { "error": "AI features are not configured" }`, the frontend's
+`/api/ai/status` reports `enabled: false`, and the ✨ buttons never render.
+The server log line shows `ai=true` / `ai=false` at startup.
 
 ## Design
 
@@ -11,6 +19,7 @@ its ✨ buttons.
 - **One Messages call per request.** No tool use, no code execution, no MCP.
   Each prompt asks for a JSON object (or short prose for explain-diff); the
   reply is parsed with a balanced-brace scan and `json.Valid`.
+- **Beta gate:** `FFF_AI_BETA` must be truthy on top of the key (above).
 - **Model:** `FFF_AI_MODEL` or `claude-sonnet-5` by default (cheap + fast for
   labeling / extraction). Set `FFF_AI_MODEL=claude-opus-5` for harder work.
 - **Quota:** 30 calls / user / hour (`aiLimiter`), plus the shared per-IP

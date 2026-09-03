@@ -38,15 +38,20 @@ cd server && go build ./... && go vet ./... && go test ./...
 |------|-----|---------|---------|
 | `--addr` | `FFF_ADDR` | `127.0.0.1:8787` | listen address |
 | `--db` | `FFF_DB` | `formfromfile.db` | SQLite file path |
-| `--allow-register` | `FFF_ALLOW_REGISTER` | `true` | allow public self-registration (the bootstrap admin is always allowed) |
-| `--session-secret` | `FFF_SESSION_SECRET` | — | *(reserved — sessions are opaque tokens, no signing yet)* |
+| `--allow-register` | `FFF_ALLOW_REGISTER` | `true` | public self-registration (bootstrap admin always allowed) — set `false` once your admin exists |
+| — | `FFF_ANTHROPIC_API_KEY` | — | AI assist key (beta) |
+| — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/AI.md)) |
+| — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
+| `--session-secret` | `FFF_SESSION_SECRET` | — | *(reserved — sessions are opaque DB tokens, no signing yet)* |
 
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.
+Deploying for a team? → [`docs/DEPLOY.md`](docs/DEPLOY.md) (nginx / Cloudflare
+Tunnel + Access, backups).
 
 ## Docker
 
-Multi-stage build (bun → `CGO_ENABLED=0 go build` → distroless static, ~14 MB):
+Multi-stage build (bun → `CGO_ENABLED=0 go build` → distroless static, ~19 MB):
 
 ```bash
 docker build -t formfromfile .
