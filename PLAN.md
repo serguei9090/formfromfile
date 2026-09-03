@@ -34,6 +34,22 @@ FormFromFile/
 
 ## Status
 
+**F0–F4b done. Only F5 (release + deploy) remains.** Code walkthrough:
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); HTTP contract:
+[`docs/API.md`](docs/API.md); AI-session guide: [`CLAUDE.md`](CLAUDE.md) /
+[`GEMINI.md`](GEMINI.md).
+
+- **F1 done** (`d9434cc`) — FormFlow core copied verbatim, 14 tests pass.
+- **F2 done** (`6500c0d`) — `internal/auth` (argon2id + throttle + Service),
+  `internal/httpapi` auth (register/login/logout/me) + admin users. 7 tests.
+- **F3 done** (`2e4d57c`) — `internal/store/schemas.go` user-scoped CRUD +
+  `/api/schemas*`. Cross-user isolation tested.
+- **F4a done** (`6a1be13`) — `api/client.ts`, authStore + schemasStore,
+  `AuthGate`, real login/register forms, Shell user menu, "My Forms" list.
+- **F4b done** (`5599802`) — the designer: `FileDropField`, `FormFields`
+  (rhf `useFieldArray`), `SchemaTree` + `schemaEdit`, `DesignerPage`
+  (Detect → fill → Export → Save). Verified E2E in-browser.
+
 - **F0 done** — `git init`; MIT LICENSE; README; `.gitignore`. `web/` =
   Vite 8 + React 19 + TS 6 + Tailwind v4 (emerald theme, radiant-leaf
   background, theme toggle) + Zustand + react-router 8 + rhf + zod +

@@ -1,32 +1,16 @@
-# React + TypeScript + Vite
+# web/ — FormFromFile SPA
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Vite + React 19 + TS + Tailwind v4 (emerald theme). See the repo root
+[`../README.md`](../README.md), [`../CLAUDE.md`](../CLAUDE.md), and
+[`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+bun install
+bun run dev     # :5273, proxies /api → :8787
+bun run build   # tsc -b && vite build → dist/
+bun run test    # Vitest
+bun run lint    # oxlint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+`src/core/form_flow/**` is copied verbatim from InfraKit Studio and must stay
+framework-free (`grep -rl "from 'react" src/core` prints nothing).

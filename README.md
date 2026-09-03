@@ -1,52 +1,68 @@
 # FormFromFile
 
-Upload an XML or YAML file, auto-detect its schema (including repeating /
-dynamic-array sections), get a generated form, fill it, export the result.
+Upload an XML, YAML, or JSON file → the app auto-detects its structure
+(including repeating / dynamic-array sections) → you get a generated form →
+fill it → export the result in the original format.
 
 A standalone spin-out of **InfraKit Studio**'s FormFlow module, with multi-user
 accounts and per-user saved forms.
 
-- **Web only** — a static SPA + a Go backend. No desktop build.
-- **Multi-user** — register / login (argon2id), per-user schemas stored
-  server-side.
+- **Web only** — a static SPA (`web/`) + a Go backend (`server/`). No desktop build.
+- **Multi-user** — register / login (argon2id), per-user schemas stored server-side.
+- **Local-first to run** — one Go binary that embeds the SPA and serves `/api`.
 - MIT licensed.
 
-## Layout
-
-```
-web/      Vite + React 19 + TS + Tailwind v4, emerald theme
-server/   Go — chi router, modernc.org/sqlite, argon2id auth
-PLAN.md   phased build plan (F0–F5)
-```
-
-## Develop
+## Quick start (dev)
 
 ```bash
-# frontend (http://localhost:5273, proxies /api → :8787)
-cd web && bun install && bun run dev
-
-# backend
+# backend — http://localhost:8787
 cd server && go run ./cmd/formfromfile --addr 127.0.0.1:8787 --db formfromfile.db
+
+# frontend — http://localhost:5273, proxies /api → :8787
+cd web && bun install && bun run dev
 ```
 
-Frontend checks: `bun run build`, `bun run test`, `bun run lint`.
-Backend checks: `go build ./...`, `go vet ./...`, `go test ./...`.
+Open http://localhost:5273, register (the **first account becomes admin**), open
+the designer, paste a file, and save a form.
+
+## Checks
+
+```bash
+cd web    && bun run build && bun run test && bun run lint
+cd server && go build ./... && go vet ./... && go test ./...
+```
 
 ## Server flags / env
 
-| flag | env | default |
-|------|-----|---------|
-| `--addr` | `FFF_ADDR` | `127.0.0.1:8787` |
-| `--db` | `FFF_DB` | `formfromfile.db` |
-| `--session-secret` | `FFF_SESSION_SECRET` | random (sessions drop on restart) |
-| `--allow-register` | `FFF_ALLOW_REGISTER` | `true` |
+| flag | env | default | meaning |
+|------|-----|---------|---------|
+| `--addr` | `FFF_ADDR` | `127.0.0.1:8787` | listen address |
+| `--db` | `FFF_DB` | `formfromfile.db` | SQLite file path |
+| `--allow-register` | `FFF_ALLOW_REGISTER` | `true` | allow public self-registration (the bootstrap admin is always allowed) |
+| `--session-secret` | `FFF_SESSION_SECRET` | — | *(reserved — sessions are opaque tokens, no signing yet)* |
 
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.
 
 ## Status
 
-**F0 done** — scaffold: web app shell (router, emerald theme, theme toggle,
-placeholder pages), Go server (`/healthz`, `/api/config`, SQLite schema for
-`users` / `sessions` / `schemas`). Next: F1 port the FormFlow core, F2 auth
-backend. See [`PLAN.md`](PLAN.md).
+Phases **F0–F4b done**; **F5 (release binary + Docker + CI) pending**. See
+[`PLAN.md`](PLAN.md) for the phase log and [`docs/`](docs/) for the code
+walkthrough. AI-session guidance is in [`CLAUDE.md`](CLAUDE.md) /
+[`GEMINI.md`](GEMINI.md).
+
+Working today: register / login / logout, admin user list, the designer
+(detect → retype fields → fill → export XML/YAML/JSON), and per-user saved
+forms (My Forms list, open, delete). Verified end-to-end against the Go
+backend.
+
+## Layout
+
+```
+web/      Vite + React 19 + TS + Tailwind v4 (emerald theme)
+  src/core/form_flow/   ← the parser, copied verbatim from InfraKit, framework-free
+  src/designer/         ← the schema-tree + live-form UI
+  src/api/ src/stores/  ← backend client + Zustand state
+server/   Go — chi router, modernc.org/sqlite, argon2id auth
+docs/     ARCHITECTURE.md, API.md
+```
