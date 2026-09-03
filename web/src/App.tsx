@@ -18,6 +18,7 @@ const PublicFillPage = lazy(() =>
 const SubmissionsPage = lazy(() =>
   import('@/pages/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })),
 )
+const AdminPage = lazy(() => import('@/pages/AdminPage').then((m) => ({ default: m.AdminPage })))
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() =>
   import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
@@ -50,6 +51,7 @@ export function App() {
           <Route path="designer/:id" element={<DesignerPage />} />
           <Route path="fill/:id" element={<FillPage />} />
           <Route path="schemas/:id/submissions" element={<SubmissionsPage />} />
+        <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
     </Suspense>

@@ -36,6 +36,29 @@ func (h *handlers) setUserDisabled(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *handlers) setUserRole(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Role string `json:"role"`
+	}
+	if err := decode(w, r, &b); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad request body")
+		return
+	}
+	err := h.opts.Auth.SetRole(chi.URLParam(r, "id"), auth.Role(b.Role))
+	switch {
+	case err == nil:
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	case errors.Is(err, auth.ErrInvalidRole):
+		writeErr(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, auth.ErrLastAdmin):
+		writeErr(w, http.StatusConflict, "cannot demote the last admin")
+	case errors.Is(err, auth.ErrNotFound):
+		writeErr(w, http.StatusNotFound, "user not found")
+	default:
+		writeErr(w, http.StatusInternalServerError, err.Error())
+	}
+}
+
 func (h *handlers) resetUserPassword(w http.ResponseWriter, r *http.Request) {
 	var b struct {
 		Password string `json:"password"`

@@ -29,6 +29,11 @@ export function Shell() {
         </Link>
         <div className="flex-1" />
         {user ? <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span> : null}
+        {user?.role === 'admin' ? (
+          <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground">
+            Users
+          </Link>
+        ) : null}
         <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>

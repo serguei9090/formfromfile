@@ -55,6 +55,12 @@ func (h *handlers) reviewSubmission(w http.ResponseWriter, r *http.Request) {
 	if handleErr(w, err, "submission not found") {
 		return
 	}
+	if b.Approved {
+		full, _ := h.opts.Store.GetSubmission(currentUser(r).ID, sub.ID)
+		if full != nil {
+			h.fireSubmissionWebhooks(sub.TemplateID, "submission.approved", full)
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"submission": sub})
 }
 
@@ -130,6 +136,10 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	// only fire on creation for auto-approved submissions; gated ones fire on review
+	if saved.Status == "approved" {
+		h.fireSubmissionWebhooks(sc.ID, "submission.created", saved)
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"submission": map[string]any{
 		"id":        saved.ID,

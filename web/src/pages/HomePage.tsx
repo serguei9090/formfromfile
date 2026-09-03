@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { SAMPLES } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
+import { useAuthStore } from '@/stores/authStore'
 
 export function HomePage() {
   const list = useSchemasStore((s) => s.list)
@@ -19,6 +20,8 @@ export function HomePage() {
   const publish = useSchemasStore((s) => s.publish)
   const unpublish = useSchemasStore((s) => s.unpublish)
   const fork = useSchemasStore((s) => s.fork)
+  const role = useAuthStore((s) => s.user?.role)
+  const canAuthor = role === 'admin' || role === 'author'
   const [copied, setCopied] = useState('')
 
   const allFolders = [...new Set(list.map((s) => s.folder).filter(Boolean))].sort()
@@ -50,9 +53,11 @@ export function HomePage() {
             Upload an XML or YAML file, get a form, fill it, export the result.
           </p>
         </div>
-        <Link to="/designer" className={buttonVariants()}>
-          <FilePlus2 className="size-4" /> New form
-        </Link>
+        {canAuthor ? (
+          <Link to="/designer" className={buttonVariants()}>
+            <FilePlus2 className="size-4" /> New form
+          </Link>
+        ) : null}
       </div>
 
       {list.length > 0 || filter.q || filter.folder || filter.tag ? (
@@ -193,15 +198,17 @@ export function HomePage() {
               >
                 <SquarePen className="size-4" />
               </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Duplicate"
-                title="Duplicate / fork"
-                onClick={() => void fork(s.id)}
-              >
-                <Copy className="size-4" />
-              </Button>
+              {canAuthor ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Duplicate"
+                  title="Duplicate / fork"
+                  onClick={() => void fork(s.id)}
+                >
+                  <Copy className="size-4" />
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
                 size="icon"

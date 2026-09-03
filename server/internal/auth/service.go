@@ -196,6 +196,27 @@ func (s *Service) SetDisabled(id string, disabled bool) error {
 	return err
 }
 
+// SetRole changes an account's role (admin only). Refuses to demote the last
+// admin.
+func (s *Service) SetRole(id string, role Role) error {
+	if !ValidRole(role) {
+		return ErrInvalidRole
+	}
+	u, err := s.userByID(id)
+	if err != nil {
+		return err
+	}
+	if u.IsAdmin() && role != RoleAdmin {
+		var admins int
+		_ = s.st.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE role = 'admin' AND disabled = 0`).Scan(&admins)
+		if admins <= 1 {
+			return ErrLastAdmin
+		}
+	}
+	_, err = s.st.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, string(role), id)
+	return err
+}
+
 // ResetPassword sets a new password for an account and revokes its sessions.
 func (s *Service) ResetPassword(id, pw string) error {
 	if len(pw) < MinPasswordLen {

@@ -7,10 +7,13 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/serguei9090/formfromfile/internal/auth"
 	"github.com/serguei9090/formfromfile/internal/store"
+	"github.com/serguei9090/formfromfile/internal/webhook"
 )
 
 type testEnv struct {
@@ -172,16 +175,23 @@ func TestAuthAndScopeGuards(t *testing.T) {
 		t.Errorf("anon /api/schemas → %d, want 401", res.StatusCode)
 	}
 
-	// a second user cannot see the first user's schema
+	// a second user (a filler — new sign-ups get the 'user' role)
 	jar2, _ := cookiejar.New(nil)
 	other := &http.Client{Jar: jar2}
-	e.do(t, other, "POST", "/api/auth/register",
+	_, ou := e.do(t, other, "POST", "/api/auth/register",
 		map[string]string{"email": "b@example.com", "password": "correct-horse-2"})
 	if res, _ := e.do(t, other, "GET", "/api/schemas/"+id, nil); res.StatusCode != http.StatusNotFound {
 		t.Errorf("cross-user GET → %d, want 404", res.StatusCode)
 	}
+	// a filler can't publish anything → 403 before ownership is even checked
+	if res, _ := e.do(t, other, "POST", "/api/schemas/"+id+"/publish", nil); res.StatusCode != http.StatusForbidden {
+		t.Errorf("filler publish → %d, want 403", res.StatusCode)
+	}
+	// promote to author, now it's a cross-user 404
+	otherID := ou["user"].(map[string]any)["id"].(string)
+	e.do(t, owner, "POST", "/api/admin/users/"+otherID+"/role", map[string]string{"role": "author"})
 	if res, _ := e.do(t, other, "POST", "/api/schemas/"+id+"/publish", nil); res.StatusCode != http.StatusNotFound {
-		t.Errorf("cross-user publish → %d, want 404", res.StatusCode)
+		t.Errorf("cross-user author publish → %d, want 404", res.StatusCode)
 	}
 
 	// bad kind
@@ -276,6 +286,66 @@ func TestVersioningForkAndApproval(t *testing.T) {
 	if res.StatusCode != http.StatusOK || out["submission"].(map[string]any)["status"] != "approved" {
 		t.Fatalf("review: %d %v", res.StatusCode, out)
 	}
+}
+
+func TestWebhookCommentsAndZip(t *testing.T) {
+	e := newEnv(t)
+	owner := e.authed(t)
+
+	// a webhook receiver
+	var got webhook.Payload
+	var sig string
+	recv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sig = r.Header.Get("X-FFF-Signature")
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(200)
+	}))
+	defer recv.Close()
+
+	_, out := e.do(t, owner, "POST", "/api/schemas", map[string]any{
+		"name": "T", "kind": "json", "body": "{}", "formJson": "{}",
+	})
+	id := out["schema"].(map[string]any)["id"].(string)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/webhooks",
+		map[string]any{"url": recv.URL, "events": []string{"submission.created"}})
+	_, out = e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	slug := out["schema"].(map[string]any)["shareSlug"].(string)
+
+	e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"submitter": "Ann", "valuesJson": `{"a":1}`, "output": "a=1"})
+
+	// webhook fires in a goroutine
+	for i := 0; i < 40 && got.Event == ""; i++ {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if got.Event != "submission.created" || got.Output != "a=1" {
+		t.Fatalf("webhook payload: %+v", got)
+	}
+	if !strings.HasPrefix(sig, "sha256=") {
+		t.Fatalf("missing HMAC signature: %q", sig)
+	}
+
+	// comment thread
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id+"/submissions", nil)
+	subID := out["submissions"].([]any)[0].(map[string]any)["id"].(string)
+	if res, _ := e.do(t, owner, "POST", "/api/submissions/"+subID+"/comments",
+		map[string]string{"body": "looks good"}); res.StatusCode != http.StatusCreated {
+		t.Fatalf("add comment: %d", res.StatusCode)
+	}
+	_, out = e.do(t, owner, "GET", "/api/submissions/"+subID+"/comments", nil)
+	if len(out["comments"].([]any)) != 1 {
+		t.Fatalf("comments: %v", out)
+	}
+
+	// zip export
+	req, _ := http.NewRequest("GET", e.srv.URL+"/api/schemas/"+id+"/submissions.zip", nil)
+	c := &http.Client{Jar: e.jar}
+	res, err := c.Do(req)
+	if err != nil || res.StatusCode != 200 || res.Header.Get("Content-Type") != "application/zip" {
+		t.Fatalf("zip: %v %d", err, res.StatusCode)
+	}
+	_ = res.Body.Close()
 }
 
 func TestAIDisabledWithoutKey(t *testing.T) {

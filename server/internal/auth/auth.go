@@ -14,6 +14,7 @@ var (
 	ErrWeakPassword       = errors.New("password too short (min 10 characters)")
 	ErrRegisterClosed     = errors.New("self-registration is disabled")
 	ErrLastAdmin          = errors.New("cannot disable the last admin")
+	ErrInvalidRole        = errors.New("invalid role")
 )
 
 const MinPasswordLen = 10
@@ -21,9 +22,15 @@ const MinPasswordLen = 10
 type Role string
 
 const (
-	RoleAdmin Role = "admin"
-	RoleUser  Role = "user"
+	RoleAdmin  Role = "admin"
+	RoleAuthor Role = "author"
+	RoleUser   Role = "user"
 )
+
+// ValidRole reports whether r is one an admin may assign.
+func ValidRole(r Role) bool {
+	return r == RoleAdmin || r == RoleAuthor || r == RoleUser
+}
 
 // User is an account. The password hash never leaves this package.
 type User struct {
@@ -38,6 +45,9 @@ type User struct {
 
 // IsAdmin reports whether the user holds the admin role.
 func (u User) IsAdmin() bool { return u.Role == RoleAdmin }
+
+// CanAuthor reports whether the user may create + publish templates.
+func (u User) CanAuthor() bool { return u.Role == RoleAdmin || u.Role == RoleAuthor }
 
 // Session is one issued login (stored keyed by sha256(token)).
 type Session struct {

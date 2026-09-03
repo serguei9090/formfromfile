@@ -74,7 +74,18 @@ needed). F27 stays parked.
   Frontend: `authStore.aiEnabled`; designer "✨ Suggest labels & validation" +
   "describe the config you need"; fill screen "✨ Fill" + "Explain these
   changes". `docs/AI.md`. +go test (501 path). Live calls not exercised in CI.
-- **F25, F26** — in progress (F24 deferred, F27 parked).
+- **F25 done** — migration v4: `author` role (existing `user` accounts → `author`,
+  new sign-ups are fillers), `submission_comments`, `webhooks`,
+  `webhook_deliveries`. `auth.SetRole` + `requireAuthor` (gates create / update /
+  publish / fork / rollback / webhook-config). `internal/webhook` — HMAC-SHA256
+  signed POST, 3 attempts w/ backoff, delivery log; fires on
+  `submission.created` (auto-approved) and `submission.approved`. Store comment
+  + webhook CRUD; `GET /schemas/{id}/submissions.zip` (streamed). Frontend:
+  `AdminPage` at `/admin` (role + disable), SubmissionsPage comment thread +
+  ZIP + webhooks section, HomePage hides authoring for fillers. +go tests
+  (webhook payload + HMAC, comments, zip). **Deferred:** email-on-submit,
+  Git-repo commit target.
+- **F26** — in progress (F24 deferred, F27 parked).
 
 ---
 

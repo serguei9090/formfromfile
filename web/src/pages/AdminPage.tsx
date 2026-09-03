@@ -1,0 +1,89 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
+import { api } from '@/api/client'
+import type { Role, User } from '@/api/types'
+import { Card } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/stores/authStore'
+
+const ROLES: Role[] = ['admin', 'author', 'user']
+const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+export function AdminPage() {
+  const me = useAuthStore((s) => s.user)
+  const [users, setUsers] = useState<User[] | null>(null)
+  const [error, setError] = useState('')
+
+  const load = () =>
+    api
+      .get<{ users: User[] }>('/admin/users')
+      .then((r) => setUsers(r.users ?? []))
+      .catch((e) => setError(msg(e)))
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+  if (me?.role !== 'admin') return <p className="text-sm text-muted-foreground">Admins only.</p>
+
+  async function act(fn: () => Promise<unknown>) {
+    try {
+      await fn()
+      await load()
+    } catch (e) {
+      setError(msg(e))
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <Link to="/" className="text-muted-foreground hover:text-foreground" aria-label="Back">
+          <ArrowLeft className="size-4" />
+        </Link>
+        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+      </div>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {users == null ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <div className="grid gap-2">
+          {users.map((u) => (
+            <Card key={u.id} className="flex items-center gap-3 p-3 text-sm">
+              <span className={`min-w-0 flex-1 truncate ${u.disabled ? 'line-through opacity-60' : ''}`}>
+                {u.email}
+              </span>
+              <Select
+                value={u.role}
+                onChange={(e) =>
+                  void act(() =>
+                    api.post(`/admin/users/${u.id}/role`, { role: e.target.value as Role }),
+                  )
+                }
+              >
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  void act(() =>
+                    api.post(`/admin/users/${u.id}/disable`, { disabled: !u.disabled }),
+                  )
+                }
+              >
+                {u.disabled ? 'Enable' : 'Disable'}
+              </Button>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

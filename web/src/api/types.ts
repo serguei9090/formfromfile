@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'user'
+export type Role = 'admin' | 'author' | 'user'
 
 export interface User {
   id: string
@@ -69,4 +69,29 @@ export interface SubmissionRecord extends SubmissionSummary {
   valuesJson: string
   output: string
   reviewNote?: string
+}
+
+export interface Comment {
+  id: string
+  authorId?: string
+  authorName: string
+  body: string
+  createdAt: number
+}
+
+export interface Webhook {
+  id: string
+  url: string
+  secret?: string
+  events: string[]
+  createdAt: number
+}
+
+export interface WebhookDelivery {
+  id: string
+  event: string
+  statusCode: number
+  error?: string
+  attempts: number
+  createdAt: number
 }

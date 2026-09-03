@@ -85,6 +85,39 @@ var migrations = []string{
 	 UPDATE schemas SET status = 'published' WHERE visibility = 'shared';
 	 INSERT INTO template_versions (id, template_id, version, body, form_json, notes, created_at)
 	   SELECT lower(hex(randomblob(12))), id, 1, body, form_json, 'initial', created_at FROM schemas;`,
+
+	// v4 — team & workflow (F25): the 'author' role, submission comments,
+	// webhooks + delivery log. Existing 'user' accounts become 'author' so
+	// multi-user setups keep working; new sign-ups are fillers ('user').
+	`UPDATE users SET role = 'author' WHERE role = 'user';
+	 CREATE TABLE submission_comments (
+	   id            TEXT PRIMARY KEY,
+	   submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+	   author_id     TEXT REFERENCES users(id) ON DELETE SET NULL,
+	   author_name   TEXT NOT NULL DEFAULT '',
+	   body          TEXT NOT NULL,
+	   created_at    INTEGER NOT NULL
+	 );
+	 CREATE INDEX ix_sc_submission ON submission_comments(submission_id, created_at);
+	 CREATE TABLE webhooks (
+	   id          TEXT PRIMARY KEY,
+	   template_id TEXT NOT NULL REFERENCES schemas(id) ON DELETE CASCADE,
+	   url         TEXT NOT NULL,
+	   secret      TEXT NOT NULL,
+	   events      TEXT NOT NULL DEFAULT '["submission.created"]',
+	   created_at  INTEGER NOT NULL
+	 );
+	 CREATE INDEX ix_wh_template ON webhooks(template_id);
+	 CREATE TABLE webhook_deliveries (
+	   id          TEXT PRIMARY KEY,
+	   webhook_id  TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+	   event       TEXT NOT NULL,
+	   status_code INTEGER NOT NULL DEFAULT 0,
+	   error       TEXT NOT NULL DEFAULT '',
+	   attempts    INTEGER NOT NULL DEFAULT 0,
+	   created_at  INTEGER NOT NULL
+	 );
+	 CREATE INDEX ix_wd_webhook ON webhook_deliveries(webhook_id, created_at DESC);`,
 }
 
 func migrate(db *sql.DB) error {

@@ -47,6 +47,18 @@ func (h *handlers) requireAdmin(next http.Handler) http.Handler {
 	})
 }
 
+// requireAuthor gates template creation / editing / publishing. `user`-role
+// accounts can fill forms but not author them.
+func (h *handlers) requireAuthor(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !currentUser(r).CanAuthor() {
+			writeErr(w, http.StatusForbidden, "you don't have permission to author templates")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,

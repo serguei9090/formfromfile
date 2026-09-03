@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Download, RotateCcw, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
-import type { SchemaRecord, SubmissionRecord, SubmissionSummary } from '@/api/types'
+import type {
+  Comment,
+  SchemaRecord,
+  SubmissionRecord,
+  SubmissionSummary,
+  Webhook,
+} from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { DiffView } from '@/designer/DiffView'
@@ -45,7 +51,19 @@ export function SubmissionsPage() {
   const [open, setOpen] = useState<SubmissionRecord | null>(null)
   const [template, setTemplate] = useState<SchemaRecord | null>(null)
   const [error, setError] = useState('')
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentBody, setCommentBody] = useState('')
+  const [webhooks, setWebhooks] = useState<Webhook[]>([])
+  const [webhookUrl, setWebhookUrl] = useState('')
   const setApproval = useSchemasStore((s) => s.setApproval)
+
+  useEffect(() => {
+    if (!id) return
+    api
+      .get<{ webhooks: Webhook[] }>(`/schemas/${id}/webhooks`)
+      .then((r) => setWebhooks(r.webhooks ?? []))
+      .catch(() => {})
+  }, [id])
 
   useEffect(() => {
     if (!id) return
@@ -76,9 +94,44 @@ export function SubmissionsPage() {
     try {
       const { submission } = await api.get<{ submission: SubmissionRecord }>(`/submissions/${sid}`)
       setOpen(submission)
+      const { comments: cs } = await api.get<{ comments: Comment[] }>(`/submissions/${sid}/comments`)
+      setComments(cs ?? [])
     } catch (e) {
       setError(msg(e))
     }
+  }
+
+  async function postComment() {
+    if (!open || !commentBody.trim()) return
+    try {
+      const { comment } = await api.post<{ comment: Comment }>(
+        `/submissions/${open.id}/comments`,
+        { body: commentBody },
+      )
+      setComments((c) => [...c, comment])
+      setCommentBody('')
+    } catch (e) {
+      setError(msg(e))
+    }
+  }
+
+  async function addWebhook() {
+    if (!id || !webhookUrl.trim()) return
+    try {
+      const { webhook } = await api.post<{ webhook: Webhook }>(`/schemas/${id}/webhooks`, {
+        url: webhookUrl,
+        events: ['submission.created'],
+      })
+      setWebhooks((w) => [...w, webhook])
+      setWebhookUrl('')
+    } catch (e) {
+      setError(msg(e))
+    }
+  }
+
+  async function removeWebhook(wid: string) {
+    await api.del(`/webhooks/${wid}`)
+    setWebhooks((w) => w.filter((x) => x.id !== wid))
   }
 
   async function review(sid: string, approved: boolean) {
@@ -164,9 +217,17 @@ export function SubmissionsPage() {
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Submissions</h1>
         {list && list.length > 0 ? (
-          <Button variant="outline" size="sm" className="ml-auto" onClick={() => void exportCsv()}>
-            <Download className="size-4" /> Export CSV
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
+              <Download className="size-4" /> CSV
+            </Button>
+            <a
+              href={`/api/schemas/${id}/submissions.zip`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs hover:bg-accent"
+            >
+              <Download className="size-4" /> ZIP
+            </a>
+          </div>
         ) : null}
       </div>
 
@@ -184,6 +245,33 @@ export function SubmissionsPage() {
           Require review before a submission counts (approval queue)
         </label>
       ) : null}
+
+      <details className="text-xs">
+        <summary className="cursor-pointer text-muted-foreground">
+          Webhooks ({webhooks.length}) — POST each submission to a URL
+        </summary>
+        <div className="mt-2 space-y-2">
+          {webhooks.map((wh) => (
+            <div key={wh.id} className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-mono">{wh.url}</span>
+              <button className="text-destructive underline" onClick={() => void removeWebhook(wh.id)}>
+                remove
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <input
+              className="h-8 flex-1 rounded-md border border-input bg-card px-2"
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+              placeholder="https://ci.example.com/hook"
+            />
+            <Button variant="outline" size="sm" onClick={() => void addWebhook()}>
+              Add
+            </Button>
+          </div>
+        </div>
+      </details>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       {list == null ? (
@@ -278,6 +366,33 @@ export function SubmissionsPage() {
             <pre className="max-h-96 overflow-auto rounded-md border border-border/60 bg-muted p-3 font-mono text-xs">
               {open.output}
             </pre>
+
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-muted-foreground">Comments</div>
+              {comments.map((c) => (
+                <div key={c.id} className="text-xs">
+                  <span className="font-medium">{c.authorName || 'You'}</span>{' '}
+                  <span className="text-muted-foreground">
+                    {new Date(c.createdAt).toLocaleString()}
+                  </span>
+                  <p className="whitespace-pre-wrap">{c.body}</p>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <input
+                  className="h-8 flex-1 rounded-md border border-input bg-card px-2 text-sm"
+                  value={commentBody}
+                  onChange={(e) => setCommentBody(e.target.value)}
+                  placeholder="Add a comment…"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void postComment()
+                  }}
+                />
+                <Button variant="outline" size="sm" onClick={() => void postComment()}>
+                  Post
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       ) : null}
