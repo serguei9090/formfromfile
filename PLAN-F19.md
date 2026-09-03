@@ -35,7 +35,17 @@ needed). F27 stays parked.
 
 ## Progress
 
-- **F19–F26** — in progress (F24 deferred, F27 parked).
+- **F19 done** — `xml/richXmlOrdered.ts` (opt-in `preserveOrder` render, keeps
+  between-element comments; per-template toggle), `CHANGELOG.md`, `v0.1.0` tag
+  (local). +4 tests.
+- **F20 done** — `reverseFill.ts` (`alignValues` / `valuesFromFilledFile` — pull
+  form values from an already-filled file onto the template schema),
+  `diff.ts` + `designer/DiffView.tsx` (value-tree diff). "Load values from a
+  filled file" in the designer + fill screen; "Show changes from the original"
+  on the fill screen; submission detail shows submitted-vs-default diff + a
+  "Re-run on current template" that pre-fills `/fill/:id`. +6 tests, E2E
+  verified.
+- **F21–F26** — in progress (F24 deferred, F27 parked).
 
 ---
 

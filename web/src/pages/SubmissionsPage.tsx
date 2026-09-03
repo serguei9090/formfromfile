@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
-import { ArrowLeft, Download, Trash2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { ArrowLeft, Download, RotateCcw, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
-import type { SubmissionRecord, SubmissionSummary } from '@/api/types'
+import type { SchemaRecord, SubmissionRecord, SubmissionSummary } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { DiffView } from '@/designer/DiffView'
+import { parseStoredForm } from '@/formflow_ext/templateModel'
+import { parseSource } from '@/formflow_ext/formats'
+import { alignValues } from '@/formflow_ext/reverseFill'
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+function templateSeed(rec: SchemaRecord): Record<string, unknown> {
+  const saved = parseStoredForm(rec.formJson)
+  if (saved) return saved.values
+  try {
+    return parseSource(rec.body).seed
+  } catch {
+    return {}
+  }
+}
 
 function flatten(obj: unknown, prefix = '', out: Record<string, string> = {}): Record<string, string> {
   if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
@@ -25,8 +39,10 @@ function csvCell(s: string): string {
 
 export function SubmissionsPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [list, setList] = useState<SubmissionSummary[] | null>(null)
   const [open, setOpen] = useState<SubmissionRecord | null>(null)
+  const [template, setTemplate] = useState<SchemaRecord | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -35,7 +51,24 @@ export function SubmissionsPage() {
       .get<{ submissions: SubmissionSummary[] }>(`/schemas/${id}/submissions`)
       .then(({ submissions }) => setList(submissions ?? []))
       .catch((e) => setError(msg(e)))
+    api
+      .get<{ schema: SchemaRecord }>(`/schemas/${id}`)
+      .then(({ schema }) => setTemplate(schema))
+      .catch(() => {})
   }, [id])
+
+  function reRun(sub: SubmissionRecord) {
+    if (!template) return
+    let vals: Record<string, unknown> = {}
+    try {
+      vals = JSON.parse(sub.valuesJson || '{}')
+    } catch {
+      /* ignore */
+    }
+    const schema =
+      parseStoredForm(template.formJson)?.schema ?? parseSource(template.body).schema
+    navigate(`/fill/${id}`, { state: { prefillValues: alignValues(schema, vals) } })
+  }
 
   async function view(sid: string) {
     try {
@@ -164,10 +197,33 @@ export function SubmissionsPage() {
               <Button variant="ghost" size="sm" onClick={() => download(open)}>
                 <Download className="size-3.5" /> Download
               </Button>
+              {template ? (
+                <Button variant="ghost" size="sm" onClick={() => reRun(open)}>
+                  <RotateCcw className="size-3.5" /> Re-run on current template
+                </Button>
+              ) : null}
               <Button variant="ghost" size="sm" onClick={() => setOpen(null)}>
                 Close
               </Button>
             </div>
+            {template
+              ? (() => {
+                  let vals: Record<string, unknown> = {}
+                  try {
+                    vals = JSON.parse(open.valuesJson || '{}')
+                  } catch {
+                    /* ignore */
+                  }
+                  return (
+                    <DiffView
+                      before={templateSeed(template)}
+                      after={vals}
+                      title="Submitted vs template default"
+                      emptyText="Submitted with the template's default values."
+                    />
+                  )
+                })()
+              : null}
             <pre className="max-h-96 overflow-auto rounded-md border border-border/60 bg-muted p-3 font-mono text-xs">
               {open.output}
             </pre>

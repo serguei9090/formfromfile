@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useParams } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FillForm } from '@/designer/FillForm'
@@ -21,6 +21,8 @@ type Loaded = {
 /** Fill one of your own saved templates (`/fill/:id`). Public share is F11. */
 export function FillPage() {
   const { id } = useParams()
+  const location = useLocation()
+  const prefill = (location.state as { prefillValues?: Record<string, unknown> } | null)?.prefillValues
   const getSchema = useSchemasStore((s) => s.get)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
@@ -82,11 +84,12 @@ export function FillPage() {
         </CardHeader>
         <CardContent>
           <FillForm
+            key={prefill ? 'prefilled' : 'fresh'}
             template={loaded.template}
             source={loaded.source}
-            initialValues={loaded.values}
+            initialValues={prefill ?? loaded.values}
             initialTokenValues={loaded.tokenValues}
-            draftKey={`fill:${id}`}
+            draftKey={prefill ? undefined : `fill:${id}`}
           />
         </CardContent>
       </Card>

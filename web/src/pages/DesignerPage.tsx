@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Copy, Download, FileSearch, Save } from 'lucide-react'
+import { Copy, Download, FileSearch, Save, Upload } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +29,7 @@ import {
   renderTemplate,
 } from '@/formflow_ext/formats'
 import { importJsonSchema, looksLikeJsonSchema } from '@/formflow_ext/importers/jsonSchema'
+import { valuesFromFilledFile } from '@/formflow_ext/reverseFill'
 import { sampleById } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
 
@@ -399,6 +400,21 @@ export function DesignerPage() {
                   ))}
                 </fieldset>
               ) : null}
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent">
+                <Upload className="size-3.5" /> Load values from a filled file
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    e.target.value = ''
+                    if (!f || !schema) return
+                    const aligned = valuesFromFilledFile(schema, await f.text())
+                    if (aligned) form.reset(aligned)
+                    else setParseError("Couldn't read that file as the same format.")
+                  }}
+                />
+              </label>
               <form>
                 <FormFields fields={schema.fields} prefix="" ctx={ctx} />
               </form>

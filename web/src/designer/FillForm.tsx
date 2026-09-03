@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
-import { Copy, Download } from 'lucide-react'
+import { Copy, Download, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,8 @@ import { applyTokens } from '@/formflow_ext/tokens'
 import { walkPaths } from '@/formflow_ext/fieldMeta'
 import { errorMessageAt, makeResolver } from '@/formflow_ext/validation'
 import { extensionFor, renderTemplate } from '@/formflow_ext/formats'
+import { valuesFromFilledFile } from '@/formflow_ext/reverseFill'
+import { DiffView } from './DiffView'
 import { FormFields, type FieldCtx } from './FormFields'
 
 type Values = Record<string, unknown>
@@ -79,6 +81,20 @@ export function FillForm({
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [showDiff, setShowDiff] = useState(false)
+
+  async function loadFromFile(file: File) {
+    setLoadError('')
+    const text = await file.text()
+    const aligned = valuesFromFilledFile(schema, text)
+    if (!aligned) {
+      setLoadError("Couldn't read that file — expected the same format as the template.")
+      return
+    }
+    form.reset(aligned)
+    setShowDiff(true)
+  }
 
   // compute initial validity so Export starts correctly disabled/enabled
   useEffect(() => {
@@ -136,6 +152,26 @@ export function FillForm({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 py-1 hover:bg-accent">
+          <Upload className="size-3.5" /> Load values from a filled file
+          <input
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void loadFromFile(f)
+              e.target.value = ''
+            }}
+          />
+        </label>
+        {loadError ? (
+          <span role="alert" className="text-destructive">
+            {loadError}
+          </span>
+        ) : null}
+      </div>
+
       {tokens.length > 0 ? (
         <fieldset className="space-y-2 rounded-md border border-primary/30 bg-primary/[0.03] p-3">
           <legend className="px-1 text-xs font-semibold text-primary">Details</legend>
@@ -155,6 +191,17 @@ export function FillForm({
       <form onSubmit={(e) => e.preventDefault()}>
         <FormFields fields={schema.fields} prefix="" ctx={ctx} />
       </form>
+
+      <button
+        type="button"
+        className="text-xs text-muted-foreground underline"
+        onClick={() => setShowDiff((s) => !s)}
+      >
+        {showDiff ? 'Hide' : 'Show'} changes from the original
+      </button>
+      {showDiff ? (
+        <DiffView before={initialValues} after={watched} title="Your changes" />
+      ) : null}
 
       <div className="flex items-center gap-3">
         <Button variant="outline" onClick={() => void doExport()} disabled={!canExport}>
