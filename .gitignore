@@ -1,0 +1,23 @@
+# node
+node_modules/
+web/dist/
+*.tsbuildinfo
+
+# go
+/server/formfromfile
+/server/*.exe
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/
+
+# build output copied into the server for embedding
+server/cmd/formfromfile/dist/*
+!server/cmd/formfromfile/dist/.gitkeep
+bin/
+*.log
