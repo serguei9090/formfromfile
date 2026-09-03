@@ -185,6 +185,15 @@ submission delete + CSV + fill-draft autosave, sample gallery + first-run tip.
 Deferred: XML inline-comment position, per-token metadata, zip/QR, Playwright,
 README screenshots.
 
+**v0.2 roadmap:** [`PLAN-F19.md`](PLAN-F19.md) — reverse fill + diff, template
+versioning / draft-publish / folders / fork / approval, deeper validation
+(conditional/computed/cross-field/async), **AI assist** (server-side, Go
+Anthropic SDK, `FFF_ANTHROPIC_API_KEY`, degrades to 501 without a key), more
+formats + full-fidelity round-trip + bulk CSV fill, team workflow
+(roles / comments / webhooks / email / zip export), ops (audit log / captcha /
+analytics / theming / i18n / PWA). Integrations (GitHub PR, CLI, OIDC) parked
+until requested.
+
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
 `.dockerignore`. Release build copies `web/dist` into
