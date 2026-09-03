@@ -156,10 +156,17 @@ FormFromFile/
 F0 M · F1 S · F2 L · F3 M · F4 M · F5 M → **L total** (multi-day). Independent
 of InfraKit — can run in parallel with WS1 / WS2.
 
+## F6+ — templates, validation, roles, formats
+
+Post-F5 roadmap driven by the 2026-09-03 review: field metadata + validation
+model, XML-attribute fidelity, `%TOKEN%` templates, author/filler role split,
+publish + share + submissions, and pluggable formats (TOML / INI / `.env` / CSV
++ JSON Schema / XSD import). Full phased plan: [`PLAN-F6.md`](PLAN-F6.md).
+
 ## Open items (later)
 
 - Schema version history + diff (port the pattern from InfraKit's prompt
   versions).
-- Shared / published forms (a form a user marks public, others can fill).
 - Import an existing *filled* file to pre-populate (reverse fill).
 - OIDC / SSO login option.
+- (Shared / published forms + validation moved into [`PLAN-F6.md`](PLAN-F6.md).)
