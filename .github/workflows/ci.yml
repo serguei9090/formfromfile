@@ -20,7 +20,7 @@ jobs:
         with:
           bun-version: "1.3"
       - run: bun install --frozen-lockfile
-      - run: bun run build
+      - run: bun run build   # tsc -b (typecheck) + vite build
       - run: bun run test
       - run: bun run lint
 
@@ -38,6 +38,11 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - run: go build ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: server
 
   docker:
     runs-on: ubuntu-latest

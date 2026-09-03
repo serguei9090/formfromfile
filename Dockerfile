@@ -30,4 +30,6 @@ ENV FFF_ADDR=0.0.0.0:8787 \
 EXPOSE 8787
 VOLUME ["/data"]
 USER nonroot
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["/formfromfile", "--healthcheck"]
 ENTRYPOINT ["/formfromfile"]

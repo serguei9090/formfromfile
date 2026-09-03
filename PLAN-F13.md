@@ -55,7 +55,16 @@ update the note in F14.
   send errors, focus moves into the `FieldSettings` panel on open, descriptive
   `aria-label`s. Responsive designer was already 1-col below `lg` — the
   segmented small-screen control is **deferred** (authors use desktop).
-- **F14, F15, F17, F18** — pending.
+- **F17 done** (partial) — `internal/httpapi/httpapi_test.go` (was zero): schema
+  lifecycle + publish + public share + anonymous submission + owner scoping +
+  the per-IP 429 + admin 403 + health/config. CI gains `golangci-lint`
+  (`server/.golangci.yml`). `authStore.offline` + `schemasStore.error` — stores
+  stop swallowing; `Shell` shows a "can't reach the server" banner with retry,
+  `HomePage` shows a load-error card. Dockerfile `HEALTHCHECK` via a new
+  `--healthcheck` flag (distroless has no curl). **Deferred:** Playwright e2e —
+  the per-phase browser verification has covered these flows; automating the
+  flaky-under-automation login is a separate task.
+- **F14, F15, F18** — pending.
 
 ## Phases
 

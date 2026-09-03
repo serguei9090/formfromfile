@@ -10,6 +10,7 @@ import { useSchemasStore } from '@/stores/schemasStore'
 export function HomePage() {
   const list = useSchemasStore((s) => s.list)
   const loading = useSchemasStore((s) => s.loading)
+  const error = useSchemasStore((s) => s.error)
   const refresh = useSchemasStore((s) => s.refresh)
   const remove = useSchemasStore((s) => s.remove)
   const publish = useSchemasStore((s) => s.publish)
@@ -46,6 +47,15 @@ export function HomePage() {
           <FilePlus2 className="size-4" /> New form
         </Link>
       </div>
+
+      {error ? (
+        <Card className="border-destructive/40 p-4 text-sm text-destructive" role="alert">
+          {error} ·{' '}
+          <button className="underline" onClick={() => void refresh()}>
+            Retry
+          </button>
+        </Card>
+      ) : null}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

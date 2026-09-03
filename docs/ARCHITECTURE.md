@@ -346,6 +346,7 @@ cd web    && bun run test     # 77: parser/cn 15 + fieldMeta 8 + richXml 8 + tok
                               #     + presets 12 + validation 6 + autoMeta 2 + FillForm 2
                               #     + formats 6 + jsonSchema 6 + coerce 4 + richYaml 8
 cd server && go test ./...     # auth (7) + store (CRUD + migration + publish/submissions)
+                              #   + httpapi (schema lifecycle, public share, rate-limit, scope guards)
 ```
 
 Add backend tests with a temp-file SQLite: `store.Open(filepath.Join(t.TempDir(),

@@ -1,4 +1,4 @@
-import { LogOut, Moon, Sun } from 'lucide-react'
+import { LogOut, Moon, Sun, WifiOff } from 'lucide-react'
 import { Link, Outlet, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/authStore'
@@ -10,6 +10,8 @@ export function Shell() {
   const theme = useThemeStore((s) => s.theme)
   const toggle = useThemeStore((s) => s.toggle)
   const user = useAuthStore((s) => s.user)
+  const offline = useAuthStore((s) => s.offline)
+  const refresh = useAuthStore((s) => s.refresh)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
 
@@ -34,6 +36,18 @@ export function Shell() {
           <LogOut className="size-4" /> Sign out
         </Button>
       </header>
+      {offline ? (
+        <div
+          role="alert"
+          className="flex items-center justify-center gap-2 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          <WifiOff className="size-4" />
+          Can&apos;t reach the server.
+          <button className="underline" onClick={() => void refresh()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
       <main className="mx-auto w-full max-w-5xl flex-1 p-6">
         <Outlet />
       </main>

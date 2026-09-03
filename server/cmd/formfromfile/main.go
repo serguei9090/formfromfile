@@ -4,8 +4,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -19,7 +22,12 @@ func main() {
 	addr := flag.String("addr", envOr("FFF_ADDR", "127.0.0.1:8787"), "listen address")
 	dbPath := flag.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
 	allowRegister := flag.Bool("allow-register", envOr("FFF_ALLOW_REGISTER", "true") == "true", "allow public self-registration")
+	healthcheck := flag.Bool("healthcheck", false, "probe the local server's /healthz and exit 0/1 (for Docker HEALTHCHECK)")
 	flag.Parse()
+
+	if *healthcheck {
+		os.Exit(probeHealth(*addr))
+	}
 
 	st, err := store.Open(*dbPath)
 	if err != nil {
@@ -61,4 +69,30 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// probeHealth GETs http://<addr>/healthz (rewriting 0.0.0.0 / empty host to
+// localhost) and returns a process exit code. Used by the Dockerfile
+// HEALTHCHECK — distroless has no shell or curl.
+func probeHealth(addr string) int {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		host, port = "", addr
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	c := http.Client{Timeout: 3 * time.Second}
+	res, err := c.Get(fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, port)))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "healthcheck:", err)
+		return 1
+	}
+	defer res.Body.Close()
+	_, _ = io.Copy(io.Discard, res.Body)
+	if res.StatusCode != http.StatusOK {
+		fmt.Fprintln(os.Stderr, "healthcheck: status", res.StatusCode)
+		return 1
+	}
+	return 0
 }

@@ -5,6 +5,7 @@ import type { SchemaKind, SchemaRecord, SchemaSummary } from '@/api/types'
 interface SchemasState {
   list: SchemaSummary[]
   loading: boolean
+  error: string | null
   refresh: () => Promise<void>
   get: (id: string) => Promise<SchemaRecord>
   create: (input: NewSchema) => Promise<SchemaRecord>
@@ -24,14 +25,15 @@ export interface NewSchema {
 export const useSchemasStore = create<SchemasState>((set, get) => ({
   list: [],
   loading: false,
+  error: null,
 
   refresh: async () => {
-    set({ loading: true })
+    set({ loading: true, error: null })
     try {
       const { schemas } = await api.get<{ schemas: SchemaSummary[] }>('/schemas')
       set({ list: schemas ?? [], loading: false })
-    } catch {
-      set({ loading: false })
+    } catch (e) {
+      set({ loading: false, error: e instanceof Error ? e.message : 'Could not load your forms' })
     }
   },
 
