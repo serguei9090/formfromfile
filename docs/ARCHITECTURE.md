@@ -135,6 +135,16 @@ from `core/**` internals, no React.
   `extensionFor`. `schema.format` stays `'json'` for plugin formats —
   **`formatId` is the round-trip source of truth**, stored on `FormTemplate` /
   `StoredForm` (falls back to `schema.format` for pre-F12 saves).
+- `yaml/richYaml.ts` — comment- and key-order-preserving YAML (the core renders
+  via js-yaml `dump`, which drops both). `parseRichYaml` → `{ schema, seed }`;
+  `renderRichYaml(schema, values, source)` edits the parsed `Document`
+  (`yaml` pkg) in place so comments / order / formatting survive — only the
+  scalars the form controls are rewritten, arrays the form changed are
+  replaced whole, source-only keys are left alone.
+- `coerce.ts` — `smartScalar(raw)`: a `number` field's text becomes a real
+  number only when it round-trips exactly (`"42"` → `42`), else stays a string
+  (`"1.0"`, `"007"`, huge ids). Used by every renderer. Number inputs are
+  registered as plain text so this text reaches export intact.
 - `importers/jsonSchema.ts` — `looksLikeJsonSchema` + `importJsonSchema`: a
   JSON Schema builds the form directly, mapping `type` / `required` / `enum` /
   `pattern` / `minimum·maximum` / `title` / `description` straight onto
@@ -332,9 +342,9 @@ to `/designer/:id`.
 ## 5. Tests
 
 ```bash
-cd web    && bun run test     # 69: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
+cd web    && bun run test     # 77: parser/cn 15 + fieldMeta 8 + richXml 8 + tokens 6
                               #     + presets 12 + validation 6 + autoMeta 2 + FillForm 2
-                              #     + formats 6 + jsonSchema 6
+                              #     + formats 6 + jsonSchema 6 + coerce 4 + richYaml 8
 cd server && go test ./...     # auth (7) + store (CRUD + migration + publish/submissions)
 ```
 

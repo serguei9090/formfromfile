@@ -21,6 +21,7 @@
  */
 import { XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser'
 import type { FieldType, FormFlowSchema, SchemaField } from '@/core/form_flow/schemaModel'
+import { smartScalar } from '../coerce'
 
 export const ATTR_PREFIX = '@_'
 export const TEXT_KEY = '#text'
@@ -195,7 +196,7 @@ function valueForField(field: SchemaField, raw: unknown): unknown {
     case 'boolean':
       return coerceBool(raw, field.defaultValue)
     case 'number':
-      return coerceNumber(raw, field.defaultValue)
+      return smartScalar(raw ?? field.defaultValue ?? '')
     default:
       return raw?.toString() ?? field.defaultValue ?? ''
   }
@@ -204,13 +205,6 @@ function valueForField(field: SchemaField, raw: unknown): unknown {
 function coerceBool(raw: unknown, fallback?: string): boolean {
   if (typeof raw === 'boolean') return raw
   return (raw?.toString() ?? fallback ?? 'false').toLowerCase() === 'true'
-}
-
-function coerceNumber(raw: unknown, fallback?: string): number {
-  if (typeof raw === 'number') return raw
-  const text = raw?.toString() ?? fallback ?? '0'
-  const n = Number(text)
-  return Number.isFinite(n) ? n : 0
 }
 
 function str(raw: unknown): string {

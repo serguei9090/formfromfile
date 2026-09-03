@@ -17,5 +17,7 @@ export interface FormatPlugin {
   /** Cheap check — is `raw` plausibly this format? */
   detect: (raw: string) => boolean
   parse: (raw: string) => ParsedFormat
-  render: (schema: FormFlowSchema, values: Values) => string
+  /** `source` is the original file text — plugins that preserve comments /
+   * ordering (e.g. `.env`) re-read it; others ignore it. */
+  render: (schema: FormFlowSchema, values: Values, source: string) => string
 }

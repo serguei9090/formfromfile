@@ -38,6 +38,18 @@ update the note in F14.
 
 ---
 
+## Progress
+
+- **F13 done** (partial) — `formflow_ext/yaml/richYaml.ts` (comment + key-order
+  preserving YAML via the `yaml` package's `Document`), `.env` line model in
+  `formats/dotenv.ts` (comments / blanks / order kept), `coerce.ts` `smartScalar`
+  (keeps `"1.0"` / `"007"` — review finding #8), FormFields drops `valueAsNumber`
+  so number text reaches the renderer intact. `FormatPlugin.render` gains
+  `source`. +8 web tests, E2E verified. **Deferred:** XML inline-comment
+  position (`preserveOrder` opt-in) — current bunched-to-parent-top behaviour
+  kept.
+- **F14–F18** — pending.
+
 ## Phases
 
 Ship order: **F13 → F16 → F17 → F14 → F15 → F18**. Fidelity and the

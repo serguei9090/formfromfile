@@ -141,16 +141,12 @@ function FieldRow({
           id={name}
           disabled={locked}
           aria-invalid={err ? true : undefined}
-          type={field.type === 'number' ? 'number' : 'text'}
-          min={field.type === 'number' ? m.min : undefined}
-          max={field.type === 'number' ? m.max : undefined}
-          step={field.type === 'number' ? m.step : undefined}
-          {...ctx.reg(
-            name,
-            field.type === 'number' && m.numberFormat !== 'string'
-              ? { valueAsNumber: true }
-              : undefined,
-          )}
+          // number fields stay strings in the form — the renderers' smartScalar
+          // converts on export only when the text round-trips exactly, so
+          // "1.0" / "007" survive (review finding #8).
+          inputMode={field.type === 'number' ? 'decimal' : undefined}
+          type="text"
+          {...ctx.reg(name)}
         />
       )}
       {err ? <p className="text-xs text-destructive">{err}</p> : null}

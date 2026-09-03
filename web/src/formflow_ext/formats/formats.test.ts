@@ -13,10 +13,15 @@ function roundTrip(raw: string, expectedFormat: string) {
 }
 
 describe('format plugins', () => {
-  it('.env round-trips', () => {
-    const { out } = roundTrip('# db\nHOST=localhost\nPORT=5432\nDEBUG=true\n', 'dotenv')
+  it('.env round-trips and keeps comments + blank lines + order', () => {
+    const raw = '# database\nHOST=localhost\nPORT=5432\n\n# flags\nDEBUG=true\n'
+    const { out } = roundTrip(raw, 'dotenv')
+    expect(out).toContain('# database')
+    expect(out).toContain('# flags')
     expect(out).toContain('HOST=localhost')
     expect(out).toContain('PORT=5432')
+    expect(out.indexOf('HOST=')).toBeLessThan(out.indexOf('DEBUG='))
+    expect(out).toMatch(/PORT=5432\n\n# flags/)
   })
 
   it('INI with sections round-trips', () => {

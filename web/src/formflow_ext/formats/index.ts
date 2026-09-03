@@ -7,6 +7,7 @@
 import { FormFlowParser } from '@/core/form_flow/formFlowParser'
 import { defaultValuesFromFields, type FormFlowSchema } from '@/core/form_flow/schemaModel'
 import { parseRichXml, renderRichXml } from '../xml/richXml'
+import { parseRichYaml, renderRichYaml } from '../yaml/richYaml'
 import { seedFromValue } from './tree'
 import { csvPlugin } from './csv'
 import { dotenvPlugin } from './dotenv'
@@ -66,6 +67,10 @@ export function parseSource(raw: string): ParsedSource {
       const rich = parseRichXml(raw)
       if (rich) return { formatId: 'xml', schema: rich.schema, seed: rich.seed }
     }
+    if (schema.format === 'yaml') {
+      const rich = parseRichYaml(raw)
+      if (rich) return { formatId: 'yaml', schema: rich.schema, seed: rich.seed }
+    }
     return {
       formatId: schema.format as FormatId,
       schema,
@@ -91,8 +96,9 @@ export function renderTemplate(
   source: string,
 ): string {
   if (formatId === 'xml') return renderRichXml(schema, values, source)
-  if (formatId === 'json' || formatId === 'yaml') return core.render(schema, values)
+  if (formatId === 'yaml') return renderRichYaml(schema, values, source)
+  if (formatId === 'json') return core.render(schema, values)
   const plugin = FORMAT_PLUGINS.find((p) => p.id === formatId)
   if (!plugin) throw new Error(`No renderer for format "${formatId}"`)
-  return plugin.render(schema, values)
+  return plugin.render(schema, values, source)
 }

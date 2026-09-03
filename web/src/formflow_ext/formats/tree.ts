@@ -10,6 +10,7 @@ import {
   type FieldType,
   type SchemaField,
 } from '@/core/form_flow/schemaModel'
+import { smartScalar } from '../coerce'
 
 const BOOL = /^(true|false)$/i
 const NUM = /^-?\d+(\.\d+)?$/
@@ -75,11 +76,8 @@ function valueFor(field: SchemaField, raw: unknown): unknown {
       if (typeof raw === 'boolean') return raw
       return (str(raw) || field.defaultValue || 'false').toLowerCase() === 'true'
     }
-    case 'number': {
-      if (typeof raw === 'number') return raw
-      const n = Number(str(raw) || field.defaultValue || '0')
-      return Number.isFinite(n) ? n : 0
-    }
+    case 'number':
+      return smartScalar(raw ?? field.defaultValue ?? '')
     default:
       return raw != null ? String(raw) : (field.defaultValue ?? '')
   }
