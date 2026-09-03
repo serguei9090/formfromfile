@@ -3,8 +3,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"flag"
 	"io/fs"
 	"log"
@@ -12,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/serguei9090/formfromfile/internal/auth"
 	"github.com/serguei9090/formfromfile/internal/httpapi"
 	"github.com/serguei9090/formfromfile/internal/store"
 )
@@ -19,7 +18,6 @@ import (
 func main() {
 	addr := flag.String("addr", envOr("FFF_ADDR", "127.0.0.1:8787"), "listen address")
 	dbPath := flag.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
-	secret := flag.String("session-secret", os.Getenv("FFF_SESSION_SECRET"), "session cookie signing secret (random if empty)")
 	allowRegister := flag.Bool("allow-register", envOr("FFF_ALLOW_REGISTER", "true") == "true", "allow public self-registration")
 	flag.Parse()
 
@@ -29,13 +27,7 @@ func main() {
 	}
 	defer st.Close()
 
-	sec := []byte(*secret)
-	if len(sec) == 0 {
-		b := make([]byte, 32)
-		_, _ = rand.Read(b)
-		sec = []byte(hex.EncodeToString(b))
-		log.Printf("no --session-secret given — using a random one (sessions drop on restart)")
-	}
+	svc := auth.NewService(st)
 
 	// web/dist is embedded by the release build; in dev this dir is absent and
 	// Vite proxies /api instead.
@@ -48,7 +40,7 @@ func main() {
 
 	h := httpapi.Router(httpapi.Options{
 		Store:         st,
-		SessionSecret: sec,
+		Auth:          svc,
 		AllowRegister: *allowRegister,
 		StaticFS:      staticFS,
 	})

@@ -10,13 +10,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/serguei9090/formfromfile/internal/auth"
 	"github.com/serguei9090/formfromfile/internal/store"
 )
 
 // Options configures the router.
 type Options struct {
 	Store         *store.Store
-	SessionSecret []byte
+	Auth          *auth.Service
 	AllowRegister bool
 	// StaticFS serves the built SPA (web/dist). Nil in dev — Vite proxies /api.
 	StaticFS fs.FS
@@ -24,6 +25,8 @@ type Options struct {
 
 // Router builds the full handler tree.
 func Router(opts Options) http.Handler {
+	h := &handlers{opts: opts}
+
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
@@ -36,9 +39,29 @@ func Router(opts Options) http.Handler {
 		r.Get("/config", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, http.StatusOK, map[string]any{"allowRegister": opts.AllowRegister})
 		})
-		// auth endpoints land in F2, schema endpoints in F3.
+
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", h.register)
+			r.Post("/login", h.login)
+			r.Post("/logout", h.logout)
+			r.Get("/me", h.me)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(h.requireAuth)
+			// schema CRUD lands in F3
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(h.requireAuth)
+			r.Use(h.requireAdmin)
+			r.Get("/admin/users", h.listUsers)
+			r.Post("/admin/users/{id}/disable", h.setUserDisabled)
+			r.Post("/admin/users/{id}/reset", h.resetUserPassword)
+		})
+
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusNotImplemented, map[string]any{"error": "not implemented yet"})
+			writeJSON(w, http.StatusNotFound, map[string]any{"error": "not found"})
 		})
 	})
 
@@ -47,6 +70,8 @@ func Router(opts Options) http.Handler {
 	}
 	return r
 }
+
+type handlers struct{ opts Options }
 
 // spaHandler serves static files and falls back to index.html for client routes.
 func spaHandler(fsys fs.FS) http.Handler {
@@ -57,10 +82,7 @@ func spaHandler(fsys fs.FS) http.Handler {
 			p = "index.html"
 		}
 		if _, err := fs.Stat(fsys, p); err != nil {
-			r2 := new(http.Request)
-			*r2 = *r
-			r2.URL.Path = "/"
-			http.ServeFileFS(w, r2, fsys, "index.html")
+			http.ServeFileFS(w, r, fsys, "index.html")
 			return
 		}
 		fileServer.ServeHTTP(w, r)
@@ -71,4 +93,13 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeErr(w http.ResponseWriter, code int, msg string) {
+	writeJSON(w, code, map[string]any{"error": msg})
+}
+
+func decode(w http.ResponseWriter, r *http.Request, v any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	return json.NewDecoder(r.Body).Decode(v)
 }
