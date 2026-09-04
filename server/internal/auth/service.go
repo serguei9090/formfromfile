@@ -75,6 +75,61 @@ func (s *Service) Register(email, pw string) (User, error) {
 	return u, nil
 }
 
+// CreateUser provisions an account directly (admin action — no bootstrap-
+// admin logic, the role is whatever the caller picked). If pw is "", a
+// random password is generated and returned as generatedPassword — the only
+// place its plaintext ever exists; it is not logged or stored anywhere.
+// Otherwise pw is validated like Register and generatedPassword is "".
+func (s *Service) CreateUser(email, pw string, role Role) (u User, generatedPassword string, err error) {
+	email = normEmail(email)
+	if email == "" || !strings.Contains(email, "@") {
+		return User{}, "", errors.New("a valid email is required")
+	}
+	if !ValidRole(role) {
+		return User{}, "", ErrInvalidRole
+	}
+	if pw == "" {
+		pw, err = randomPassword()
+		if err != nil {
+			return User{}, "", err
+		}
+		generatedPassword = pw
+	} else if len(pw) < MinPasswordLen {
+		return User{}, "", ErrWeakPassword
+	}
+
+	hash, err := hashPassword(pw)
+	if err != nil {
+		return User{}, "", err
+	}
+	u = User{ID: newID(), Email: email, Role: role, CreatedAt: time.Now().UnixMilli(), passwordHash: hash}
+	_, err = s.st.DB.Exec(
+		`INSERT INTO users (id, email, pw_hash, role, disabled, created_at) VALUES (?,?,?,?,0,?)`,
+		u.ID, u.Email, u.passwordHash, string(u.Role), u.CreatedAt,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			return User{}, "", ErrTaken
+		}
+		return User{}, "", err
+	}
+	return u, generatedPassword, nil
+}
+
+// randomPassword returns a 20-character password drawn from a alphanumeric +
+// symbol alphabet, using crypto/rand — well above MinPasswordLen.
+func randomPassword() (string, error) {
+	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*"
+	b := make([]byte, 20)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	for i, v := range b {
+		b[i] = alphabet[int(v)%len(alphabet)]
+	}
+	return string(b), nil
+}
+
 // Login verifies credentials and issues a session token. `key` is a
 // throttle key (usually the client IP + email).
 func (s *Service) Login(email, pw, throttleKey string) (token string, u User, err error) {

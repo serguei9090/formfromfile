@@ -1,16 +1,137 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { ArrowLeft, Download, Trash2 } from 'lucide-react'
-import { api } from '@/api/client'
+import { ArrowLeft, Check, Copy, Download, Trash2, UserPlus } from 'lucide-react'
+import { api, ApiError } from '@/api/client'
 import type { AuditEntry, DataOpEntry, Role, User } from '@/api/types'
 import { Card } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/authStore'
 import { AdminSettings } from './AdminSettings'
 
 const ROLES: Role[] = ['admin', 'author', 'user']
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+function AddUserForm({ onCreated }: { onCreated: () => void }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<Role>('user')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ email: string; password: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    setResult(null)
+    try {
+      const res = await api.post<{ user: User; generatedPassword?: string }>('/admin/users', {
+        email,
+        password: password || undefined,
+        role,
+      })
+      if (res.generatedPassword) {
+        setResult({ email: res.user.email, password: res.generatedPassword })
+      }
+      setEmail('')
+      setPassword('')
+      setRole('user')
+      onCreated()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : msg(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="space-y-3 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <UserPlus className="size-4" /> Add user
+      </h3>
+      <p className="text-xs text-muted-foreground">
+        For deployments with public sign-up turned off — an admin creates the account directly.
+        Leave the password blank to generate one (shown once, below).
+      </p>
+      <form onSubmit={(e) => void submit(e)} className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <Label htmlFor="new-user-email">Email</Label>
+          <Input
+            id="new-user-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-9 w-56"
+            placeholder="person@example.com"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="new-user-password">Password</Label>
+          <Input
+            id="new-user-password"
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-9 w-40"
+            placeholder="generate for me"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="new-user-role">Role</Label>
+          <Select
+            id="new-user-role"
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+            className="h-9"
+          >
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button type="submit" disabled={busy || !email}>
+          {busy ? 'Creating…' : 'Add user'}
+        </Button>
+      </form>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {result ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/[0.05] p-3 text-sm"
+        >
+          <span>
+            Created <span className="font-medium">{result.email}</span> — password:{' '}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{result.password}</code>
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void navigator.clipboard.writeText(result.password)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            }}
+          >
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />} Copy
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Won't be shown again — hand it to them now.
+          </span>
+          <button className="ml-auto text-xs underline" onClick={() => setResult(null)}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+    </Card>
+  )
+}
 
 export function AdminPage() {
   const me = useAuthStore((s) => s.user)
@@ -56,6 +177,8 @@ export function AdminPage() {
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
       </div>
+      <AddUserForm onCreated={load} />
+
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {users == null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

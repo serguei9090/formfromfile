@@ -259,6 +259,12 @@ Firebase config. Env-only for now (not yet in the F29b settings-panel layer).
 / none-alg rejection) — manually verified in-browser (button absent without
 config, present + graceful-error with a fake project).
 
+**F32a done** — admin-provisioned users: `auth.Service.CreateUser` (blank
+password → generated + returned once, never stored/logged in plaintext;
+explicit role, no bootstrap-admin logic), `POST /api/admin/users`, an "Add
+user" form in Admin → Users. See [`PLAN-F32.md`](PLAN-F32.md). **F32b
+(per-template auth-gated public forms) not started.**
+
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
 `.dockerignore`. Release build copies `web/dist` into

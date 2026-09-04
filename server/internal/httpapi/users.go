@@ -12,6 +12,38 @@ import (
 	"github.com/serguei9090/formfromfile/internal/store"
 )
 
+func (h *handlers) createUser(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if err := decode(w, r, &b); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad request body")
+		return
+	}
+	role := auth.Role(b.Role)
+	if role == "" {
+		role = auth.RoleUser
+	}
+	u, generated, err := h.opts.Auth.CreateUser(b.Email, b.Password, role)
+	switch {
+	case err == nil:
+		h.audit(r, "user.create", u.ID, u.Email)
+		resp := map[string]any{"user": u}
+		if generated != "" {
+			resp["generatedPassword"] = generated
+		}
+		writeJSON(w, http.StatusCreated, resp)
+	case errors.Is(err, auth.ErrTaken):
+		writeErr(w, http.StatusConflict, err.Error())
+	case errors.Is(err, auth.ErrWeakPassword), errors.Is(err, auth.ErrInvalidRole):
+		writeErr(w, http.StatusBadRequest, err.Error())
+	default:
+		writeErr(w, http.StatusBadRequest, err.Error())
+	}
+}
+
 func (h *handlers) listUsers(w http.ResponseWriter, _ *http.Request) {
 	users, err := h.opts.Auth.ListUsers()
 	if err != nil {

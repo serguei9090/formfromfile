@@ -583,6 +583,57 @@ func TestSecurityHeadersCSPWithTurnstile(t *testing.T) {
 	}
 }
 
+func TestAdminCreateUser(t *testing.T) {
+	e := newEnv(t)
+	admin := e.authed(t)
+
+	// non-admin can't create users
+	fjar, _ := cookiejar.New(nil)
+	filler := &http.Client{Jar: fjar}
+	e.do(t, filler, "POST", "/api/auth/register",
+		map[string]string{"email": "filler@example.com", "password": "correct-horse-2"})
+	if res, _ := e.do(t, filler, "POST", "/api/admin/users",
+		map[string]string{"email": "x@example.com"}); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("filler create user: want 403, got %d", res.StatusCode)
+	}
+
+	// admin creates a user with no password → one is generated
+	res, out := e.do(t, admin, "POST", "/api/admin/users",
+		map[string]string{"email": "new@example.com", "role": "author"})
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("create user: %d %v", res.StatusCode, out)
+	}
+	u := out["user"].(map[string]any)
+	if u["role"] != "author" || u["email"] != "new@example.com" {
+		t.Fatalf("created user: %v", u)
+	}
+	gen, _ := out["generatedPassword"].(string)
+	if len(gen) < 10 {
+		t.Fatalf("generatedPassword missing/short: %q", gen)
+	}
+
+	// the generated password actually logs in
+	njar, _ := cookiejar.New(nil)
+	newClient := &http.Client{Jar: njar}
+	if res, out := e.do(t, newClient, "POST", "/api/auth/login",
+		map[string]string{"email": "new@example.com", "password": gen}); res.StatusCode != http.StatusOK {
+		t.Fatalf("login with generated password: %d %v", res.StatusCode, out)
+	}
+
+	// explicit password → no generatedPassword in the response
+	_, out2 := e.do(t, admin, "POST", "/api/admin/users",
+		map[string]string{"email": "explicit@example.com", "password": "correct-horse-9", "role": "user"})
+	if _, ok := out2["generatedPassword"]; ok {
+		t.Fatalf("unexpected generatedPassword: %v", out2)
+	}
+
+	// duplicate email → 409
+	if res, _ := e.do(t, admin, "POST", "/api/admin/users",
+		map[string]string{"email": "new@example.com"}); res.StatusCode != http.StatusConflict {
+		t.Fatalf("duplicate email: want 409, got %d", res.StatusCode)
+	}
+}
+
 func TestMetricsEndpoint(t *testing.T) {
 	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {

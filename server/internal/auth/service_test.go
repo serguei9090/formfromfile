@@ -180,3 +180,46 @@ func TestLoginOrProvisionFirebaseDisabledAccount(t *testing.T) {
 		t.Fatalf("disabled account via firebase: %v, want ErrDisabled", err)
 	}
 }
+
+func TestCreateUser(t *testing.T) {
+	s := newTestService(t)
+
+	// blank password → generated, and it actually logs in
+	u, gen, err := s.CreateUser("new@example.com", "", RoleUser)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if u.Role != RoleUser || u.Email != "new@example.com" {
+		t.Fatalf("user: %+v", u)
+	}
+	if len(gen) < MinPasswordLen {
+		t.Fatalf("generated password too short: %q", gen)
+	}
+	if _, _, err := s.Login("new@example.com", gen, "k"); err != nil {
+		t.Fatalf("login with generated password: %v", err)
+	}
+
+	// explicit password → no generated one returned
+	_, gen2, err := s.CreateUser("explicit@example.com", "correcthorse1", RoleAuthor)
+	if err != nil {
+		t.Fatalf("create with explicit pw: %v", err)
+	}
+	if gen2 != "" {
+		t.Fatalf("expected no generated password, got %q", gen2)
+	}
+
+	// weak explicit password rejected
+	if _, _, err := s.CreateUser("weak@example.com", "short", RoleUser); err != ErrWeakPassword {
+		t.Fatalf("weak password: %v, want ErrWeakPassword", err)
+	}
+
+	// invalid role rejected
+	if _, _, err := s.CreateUser("bad-role@example.com", "correcthorse1", Role("superuser")); err != ErrInvalidRole {
+		t.Fatalf("invalid role: %v, want ErrInvalidRole", err)
+	}
+
+	// duplicate email rejected
+	if _, _, err := s.CreateUser("new@example.com", "correcthorse1", RoleUser); err != ErrTaken {
+		t.Fatalf("duplicate email: %v, want ErrTaken", err)
+	}
+}

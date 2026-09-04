@@ -141,6 +141,7 @@ func Router(opts Options) http.Handler {
 			r.Use(h.requireAuth)
 			r.Use(h.requireAdmin)
 			r.Get("/admin/users", h.listUsers)
+			r.Post("/admin/users", h.createUser)
 			r.Post("/admin/users/{id}/disable", h.setUserDisabled)
 			r.Post("/admin/users/{id}/reset", h.resetUserPassword)
 			r.Post("/admin/users/{id}/role", h.setUserRole)

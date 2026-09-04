@@ -17,6 +17,28 @@ a bigger org) without building your own OAuth flow.
 
 ---
 
+## Admin-provisioned accounts (F32a)
+
+For a "no public sign-up, admin adds everyone" deployment: set
+`FFF_ALLOW_REGISTER=false` (or flip it off live from Admin → Settings — see
+`PLAN-F29.md`), then use the **Add user** form at the top of Admin → Users.
+
+- Pick an email + role. Leave the password field blank to have one generated
+  (20 chars, `crypto/rand`) — it's shown **once**, in a dismissible callout
+  with a copy button, right after creation. It is never logged and never
+  stored anywhere in plaintext; only its argon2id hash is kept, same as any
+  other account. Hand it to the person and they change it themselves (no
+  self-service "change my password" screen exists yet — an admin resets it
+  from the same page if they lose it).
+- Or set an explicit password yourself (min 10 chars, same rule as
+  self-registration) if you're handing it over some other way.
+- The account is usable immediately — no separate "activate" step.
+
+This bypasses the normal bootstrap-admin rule (role is whatever you pick, not
+auto-admin-if-first) — it's meant for an admin who already exists adding
+more people, not for creating the very first account. Use plain
+self-registration for that first one, as today.
+
 ## How Firebase sign-in works here
 
 **No Firebase Admin SDK, no service-account key.** A Firebase ID token is a
