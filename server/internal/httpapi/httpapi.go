@@ -37,6 +37,12 @@ type Options struct {
 	// DisableSecurityHeaders turns off the securityHeaders middleware
 	// (FFF_SECURITY_HEADERS=off). Default (zero value) keeps them on.
 	DisableSecurityHeaders bool
+	// MetricsToken, when set (FFF_METRICS_TOKEN), mounts GET /metrics behind a
+	// bearer-token check. Empty → no /metrics route at all.
+	MetricsToken string
+	// ErrorWebhook, when set (FFF_ERROR_WEBHOOK), receives a JSON POST on every
+	// recovered panic (request id, path, error, stack).
+	ErrorWebhook string
 	// StaticFS serves the built SPA (web/dist). Nil in dev — Vite proxies /api.
 	StaticFS fs.FS
 }
@@ -54,11 +60,14 @@ func Router(opts Options) http.Handler {
 		r.Use(trustedProxyIP)
 	}
 	r.Use(requestLogger)
-	r.Use(middleware.Recoverer)
+	r.Use(h.recoverer)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
+	if opts.MetricsToken != "" {
+		r.Get("/metrics", h.metricsHandler)
+	}
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/config", h.getConfig)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/serguei9090/formfromfile/internal/metrics"
 	"github.com/serguei9090/formfromfile/internal/store"
 	"github.com/serguei9090/formfromfile/internal/webhook"
 )
@@ -98,6 +99,11 @@ func (h *handlers) fireSubmissionWebhooks(templateID, event string, sub *store.S
 	webhook.Fire(targets, templateID, event, sub, sub.Output, h.cfg().WebhookAllowPrivate,
 		func(id string, code, attempts int, errMsg string) {
 			h.opts.Store.RecordDelivery(id, event, code, attempts, errMsg)
+			if code >= 200 && code < 300 {
+				metrics.Webhooks.Inc("ok")
+			} else {
+				metrics.Webhooks.Inc("fail")
+			}
 		})
 }
 

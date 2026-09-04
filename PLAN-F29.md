@@ -63,6 +63,15 @@ investigation, do it whenever.
   service split: `New()` builds the client whenever the key is present,
   `SetEnabled`/`HasKey` added. UI: `AdminSettings` component folded into
   `/admin` (source badges, reset per key). +2 server tests, +1 e2e.
+- **F29c done** — `internal/metrics` (hand-rolled Prometheus text, no
+  client_golang): labelled counters + one histogram + scrape-time gauges.
+  `GET /metrics` gated by `FFF_METRICS_TOKEN` (bearer). `requestLogger` feeds
+  `fff_http_requests_total` / `_duration_seconds` (route pattern, not path);
+  webhook + AI paths tapped. `h.recoverer` replaces `middleware.Recoverer` —
+  logs the panic with the request id and POSTs `FFF_ERROR_WEBHOOK` if set.
+  CI: `govulncheck` + Trivy image scan, both `continue-on-error` for now.
+  **Deferred:** AI $ budget (needs an `ai_usage` table — folds into F29e's
+  migration) + Sentry SDK (the generic webhook covers it). +4 tests.
 
 ---
 

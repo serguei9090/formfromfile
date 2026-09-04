@@ -17,6 +17,7 @@ import (
 	"github.com/serguei9090/formfromfile/internal/ai"
 	"github.com/serguei9090/formfromfile/internal/auth"
 	"github.com/serguei9090/formfromfile/internal/httpapi"
+	"github.com/serguei9090/formfromfile/internal/metrics"
 	"github.com/serguei9090/formfromfile/internal/store"
 )
 
@@ -52,6 +53,7 @@ func main() {
 	}
 
 	aiSvc := ai.New()
+	registerMetrics(st, *dbPath)
 
 	h := httpapi.Router(httpapi.Options{
 		Store:                  st,
@@ -63,6 +65,8 @@ func main() {
 		TurnstileSiteKey:       os.Getenv("FFF_TURNSTILE_SITE_KEY"),
 		TurnstileSecret:        os.Getenv("FFF_TURNSTILE_SECRET"),
 		DisableSecurityHeaders: off(os.Getenv("FFF_SECURITY_HEADERS")),
+		MetricsToken:           os.Getenv("FFF_METRICS_TOKEN"),
+		ErrorWebhook:           os.Getenv("FFF_ERROR_WEBHOOK"),
 		StaticFS:               staticFS,
 	})
 
@@ -102,6 +106,27 @@ func setupLogging() {
 		h = slog.NewJSONHandler(os.Stderr, opts)
 	}
 	slog.SetDefault(slog.New(h))
+}
+
+// registerMetrics wires the scrape-time gauges. Counters/histograms register
+// themselves in the metrics package.
+func registerMetrics(st *store.Store, dbPath string) {
+	metrics.R.Gauge("fff_users_total", "Registered accounts.", func() float64 {
+		return float64(st.UsersTotal())
+	})
+	metrics.R.Gauge("fff_sessions_active", "Unexpired sessions.", func() float64 {
+		return float64(st.SessionsActive())
+	})
+	metrics.R.Gauge("fff_submissions_total", "Stored submissions.", func() float64 {
+		return float64(st.SubmissionsTotal())
+	})
+	metrics.R.Gauge("fff_db_bytes", "SQLite database file size in bytes.", func() float64 {
+		fi, err := os.Stat(dbPath)
+		if err != nil {
+			return 0
+		}
+		return float64(fi.Size())
+	})
 }
 
 func envOr(key, def string) string {

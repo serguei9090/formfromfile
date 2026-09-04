@@ -197,3 +197,21 @@ func (s *Store) CountUsers() (int, error) {
 	err := s.DB.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n)
 	return n, err
 }
+
+// countOf runs a bare COUNT(*) and swallows the error (0 on failure) — for
+// metrics gauges where a transient read error should not blow up a scrape.
+func (s *Store) countOf(table string) int {
+	var n int
+	// table is a package-internal constant string, never user input.
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n)
+	return n
+}
+
+// UsersTotal / SessionsActive / SubmissionsTotal back the /metrics gauges.
+func (s *Store) UsersTotal() int       { return s.countOf("users") }
+func (s *Store) SubmissionsTotal() int { return s.countOf("submissions") }
+func (s *Store) SessionsActive() int {
+	var n int
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM sessions WHERE expires_at > strftime('%s','now')`).Scan(&n)
+	return n
+}

@@ -43,6 +43,14 @@ jobs:
         with:
           version: latest
           working-directory: server
+      # non-blocking for now (stdlib advisories often just need the next Go
+      # patch — the setup-go "1.26" line tracks it). Flip continue-on-error
+      # off once we're confident it stays green.
+      - name: govulncheck
+        continue-on-error: true
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          "$(go env GOPATH)/bin/govulncheck" ./...
 
   e2e:
     runs-on: ubuntu-latest
@@ -86,6 +94,14 @@ jobs:
           tags: formfromfile:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Trivy image scan
+        continue-on-error: true # non-blocking for now; see govulncheck note
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: formfromfile:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
       - name: Smoke test
         run: |
           docker run -d --name fff -p 8787:8787 formfromfile:ci

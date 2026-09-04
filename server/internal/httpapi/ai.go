@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/serguei9090/formfromfile/internal/ai"
+	"github.com/serguei9090/formfromfile/internal/metrics"
 )
 
 // aiLimiter caps AI calls per user (they cost money).
@@ -38,6 +39,15 @@ func aiErr(w http.ResponseWriter, err error) {
 	writeErr(w, http.StatusBadGateway, "AI request failed: "+err.Error())
 }
 
+// aiDone records the outcome of one AI call for /metrics.
+func aiDone(op string, err error) {
+	result := "ok"
+	if err != nil {
+		result = "error"
+	}
+	metrics.AIRequests.Inc(op, result)
+}
+
 func (h *handlers) aiSuggestMeta(w http.ResponseWriter, r *http.Request) {
 	if !h.aiGate(w, r) {
 		return
@@ -51,6 +61,7 @@ func (h *handlers) aiSuggestMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	meta, err := h.opts.AI.SuggestMeta(r.Context(), b.Schema, b.Values)
+	aiDone("suggest_meta", err)
 	if err != nil {
 		aiErr(w, err)
 		return
@@ -68,6 +79,7 @@ func (h *handlers) aiExplainDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text, err := h.opts.AI.ExplainDiff(r.Context(), b.Format, b.Before, b.After)
+	aiDone("explain_diff", err)
 	if err != nil {
 		aiErr(w, err)
 		return
@@ -85,6 +97,7 @@ func (h *handlers) aiSchemaFromPrompt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body, kind, err := h.opts.AI.SchemaFromPrompt(r.Context(), b.Description, b.Format)
+	aiDone("schema_from_prompt", err)
 	if err != nil {
 		aiErr(w, err)
 		return
@@ -106,6 +119,7 @@ func (h *handlers) aiFillAssist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	values, err := h.opts.AI.FillAssist(r.Context(), b.Schema, b.Meta, b.Instruction)
+	aiDone("fill_assist", err)
 	if err != nil {
 		aiErr(w, err)
 		return

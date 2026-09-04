@@ -56,6 +56,8 @@ docker run -d --name fff \
 | `FFF_WEBHOOK_ALLOW_PRIVATE` | — | `true` lets webhook targets be LAN / loopback / http (internal deployments). Default blocks them (SSRF). |
 | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | Cloudflare Turnstile — see §CAPTCHA below. Both set → public-form CAPTCHA. |
 | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response (see §security headers); `off` disables |
+| `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus text) behind `Authorization: Bearer <token>`; unset → route absent |
+| `FFF_ERROR_WEBHOOK` | — | recovered panics POST `{time,requestId,method,path,error,stack}` here — point it at Slack/Discord/an alert sink |
 | `FFF_ANTHROPIC_API_KEY` | — | AI beta key (see [`AI.md`](AI.md)) |
 | `FFF_AI_BETA` | — | `true` to actually turn AI on — **needs the key too** |
 | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
@@ -118,6 +120,40 @@ wins, values match). The session cookie is `HttpOnly`, `SameSite=Lax`, and
 `Secure` whenever the request is HTTPS (same TLS detection as HSTS). Lax is
 deliberate — share links (`/f/:slug`) are top-level GETs that must work from an
 email; Lax still blocks the cookie on cross-site POSTs.
+
+---
+
+## Observability
+
+All opt-in — nothing is exposed unless you set the env var.
+
+**Metrics.** `FFF_METRICS_TOKEN=<random>` → scrape `GET /metrics` with
+`Authorization: Bearer <token>`. Prometheus text format, no extra port.
+
+```yaml
+scrape_configs:
+  - job_name: formfromfile
+    authorization: { credentials: "<token>" }
+    static_configs: [{ targets: ["forms.internal:8787"] }]
+```
+
+Series: `fff_http_requests_total{method,route,status}`,
+`fff_http_request_duration_seconds` (histogram),
+`fff_webhook_deliveries_total{result}`, `fff_ai_requests_total{op,result}`,
+and gauges `fff_users_total`, `fff_sessions_active`, `fff_submissions_total`,
+`fff_db_bytes`.
+
+**Alert on:** 5xx rate (`fff_http_requests_total{status=~"5.."}`), webhook
+failure rate, `fff_db_bytes` growth, p95 latency.
+
+**Errors.** `FFF_ERROR_WEBHOOK=<url>` → every recovered panic POSTs a JSON
+report (request id + path + error + stack). Point it at a Slack/Discord
+incoming webhook or an alerting endpoint. It is not run through the SSRF guard
+(operator-configured, like the DB path) — use a URL you control.
+
+**CI scanning.** `govulncheck` (Go advisories) runs in the server job and
+Trivy scans the image in the docker job — both non-blocking for now (flip
+`continue-on-error` off in `.github/workflows/ci.yml` once they stay green).
 
 ---
 

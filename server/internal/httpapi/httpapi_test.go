@@ -465,6 +465,57 @@ func TestSecurityHeadersCSPWithTurnstile(t *testing.T) {
 	}
 }
 
+func TestMetricsEndpoint(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	srv := httptest.NewServer(Router(Options{
+		Store: st, Auth: auth.NewService(st), AllowRegister: true,
+		MetricsToken: "sekret",
+	}))
+	t.Cleanup(srv.Close)
+
+	// no token → 401
+	res, _ := http.Get(srv.URL + "/metrics")
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("no-token /metrics: want 401, got %d", res.StatusCode)
+	}
+	_ = res.Body.Close()
+
+	// wrong token → 401
+	req, _ := http.NewRequest("GET", srv.URL+"/metrics", nil)
+	req.Header.Set("Authorization", "Bearer nope")
+	res, _ = http.DefaultClient.Do(req)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("bad-token /metrics: want 401, got %d", res.StatusCode)
+	}
+	_ = res.Body.Close()
+
+	// right token → 200 + exposition
+	req, _ = http.NewRequest("GET", srv.URL+"/metrics", nil)
+	req.Header.Set("Authorization", "Bearer sekret")
+	res, _ = http.DefaultClient.Do(req)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("good-token /metrics: %d", res.StatusCode)
+	}
+	body := make([]byte, 4096)
+	n, _ := res.Body.Read(body)
+	_ = res.Body.Close()
+	if !strings.Contains(string(body[:n]), "fff_http_requests_total") {
+		t.Fatalf("exposition missing http counter:\n%s", body[:n])
+	}
+}
+
+func TestMetricsDisabledByDefault(t *testing.T) {
+	e := newEnv(t)
+	res, _ := e.do(t, e.anon, "GET", "/metrics", nil)
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("/metrics without a token: want 404, got %d", res.StatusCode)
+	}
+}
+
 func TestRuntimeSettings(t *testing.T) {
 	e := newEnv(t)
 	admin := e.authed(t) // first user

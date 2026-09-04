@@ -214,9 +214,13 @@ row › startup value, 5s cache): `GET`/`PUT /api/admin/settings`, an
 webhook-allow-private / AI beta / default submission cap with **no restart**.
 `--session-secret` dropped.
 
-**Next (F29c–F29e):** [`PLAN-F29.md`](PLAN-F29.md) — `/metrics` + error capture
-+ `govulncheck`/Trivy, rate-limit depth, data retention + GDPR export/delete
-(v7). Everything ships dormant (default = today's behaviour).
+**F29c done** — `internal/metrics` (hand-rolled Prometheus text); `GET
+/metrics` gated by `FFF_METRICS_TOKEN` (bearer); `h.recoverer` logs panics +
+POSTs `FFF_ERROR_WEBHOOK`; CI gains `govulncheck` + Trivy (non-blocking).
+
+**Next (F29d–F29e):** [`PLAN-F29.md`](PLAN-F29.md) — rate-limit depth
+(per-slug cooldown + global ceiling), data retention + GDPR export/delete
+(v7, + an `ai_usage` table for an AI $ budget). Everything ships dormant.
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

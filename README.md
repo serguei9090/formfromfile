@@ -47,6 +47,8 @@ cd server && go build ./... && go vet ./... && go test ./...
 | — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/AI.md)) |
 | — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
 | — | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response; `off` to disable (debugging / odd proxy) |
+| — | `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus) behind `Authorization: Bearer <token>`; unset → no route |
+| — | `FFF_ERROR_WEBHOOK` | — | recovered panics POST a JSON report here (request id, path, error, stack) |
 
 Most of these (register, Turnstile keys, webhook-allow-private, AI beta,
 default submission cap) can also be changed at runtime from **Admin →
