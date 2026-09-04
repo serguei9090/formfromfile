@@ -11,6 +11,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/serguei9090/formfromfile/internal/netguard"
 )
 
 var client = &http.Client{Timeout: 10 * time.Second}
@@ -31,16 +33,32 @@ type Payload struct {
 	Output     string `json:"output"`
 }
 
+// URLAllowed reports whether a webhook target URL may be configured. Public
+// deployments keep `allowPrivate` false (block loopback / RFC1918 / metadata);
+// an internal deployment can set FFF_WEBHOOK_ALLOW_PRIVATE=true to POST to a
+// LAN CI server over plain http.
+func URLAllowed(raw string, allowPrivate bool) bool {
+	if allowPrivate {
+		return raw != ""
+	}
+	return netguard.SafeOutboundURL(raw)
+}
+
 // Fire delivers `event` to every target that subscribes to it, in a background
 // goroutine. `log(webhookID, code, attempts, errMsg)` records each result.
+// Targets that fail the guard at delivery time (DNS rebinding) are skipped.
 func Fire(targets []Target, templateID, event string, submission any, output string,
-	log func(webhookID string, code, attempts int, errMsg string)) {
+	allowPrivate bool, log func(webhookID string, code, attempts int, errMsg string)) {
 	go func() {
 		body, _ := json.Marshal(Payload{
 			Event: event, TemplateID: templateID, Submission: submission, Output: output,
 		})
 		for _, t := range targets {
 			if !subscribed(t.Events, event) {
+				continue
+			}
+			if !URLAllowed(t.URL, allowPrivate) {
+				log(t.ID, 0, 0, "blocked: target resolves to a private/loopback address")
 				continue
 			}
 			code, attempts, errMsg := deliver(t, body)

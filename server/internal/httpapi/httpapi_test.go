@@ -30,7 +30,9 @@ func newEnv(t *testing.T) *testEnv {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	svc := auth.NewService(st)
-	srv := httptest.NewServer(Router(Options{Store: st, Auth: svc, AllowRegister: true}))
+	srv := httptest.NewServer(Router(Options{
+		Store: st, Auth: svc, AllowRegister: true, WebhookAllowPrivate: true,
+	}))
 	t.Cleanup(srv.Close)
 
 	jar, _ := cookiejar.New(nil)
@@ -125,7 +127,7 @@ func TestSchemaLifecycleAndPublicShare(t *testing.T) {
 	if res, _ := e.do(t, owner, "DELETE", "/api/submissions/"+subID, nil); res.StatusCode != http.StatusOK {
 		t.Fatalf("delete submission: %d", res.StatusCode)
 	}
-	res, out = e.do(t, owner, "GET", "/api/schemas/"+id+"/submissions", nil)
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id+"/submissions", nil)
 	if len(out["submissions"].([]any)) != 0 {
 		t.Fatalf("submission not deleted: %v", out)
 	}
@@ -248,11 +250,11 @@ func TestVersioningForkAndApproval(t *testing.T) {
 	}
 
 	// rollback to v1 -> creates v3 with v1's body
-	res, out = e.do(t, owner, "POST", "/api/schemas/"+id+"/rollback/1", nil)
+	res, _ = e.do(t, owner, "POST", "/api/schemas/"+id+"/rollback/1", nil)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("rollback: %d", res.StatusCode)
 	}
-	res, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
 	if out["schema"].(map[string]any)["body"] != "a: 1" {
 		t.Fatalf("rollback body: %v", out["schema"])
 	}
@@ -308,7 +310,7 @@ func TestWebhookCommentsAndZip(t *testing.T) {
 	id := out["schema"].(map[string]any)["id"].(string)
 	e.do(t, owner, "POST", "/api/schemas/"+id+"/webhooks",
 		map[string]any{"url": recv.URL, "events": []string{"submission.created"}})
-	_, out = e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
 	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
 	slug := out["schema"].(map[string]any)["shareSlug"].(string)
 

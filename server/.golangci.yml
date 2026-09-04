@@ -22,3 +22,5 @@ linters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+
+# run locally: golangci-lint run ./...   (v2, from GOPATH/bin)

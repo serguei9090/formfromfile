@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/serguei9090/formfromfile/internal/auth"
 )
@@ -42,6 +43,24 @@ func (h *handlers) requireAdmin(next http.Handler) http.Handler {
 		if !currentUser(r).IsAdmin() {
 			writeErr(w, http.StatusForbidden, "admin only")
 			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// trustedProxyIP rewrites r.RemoteAddr from X-Forwarded-For (first hop) or
+// X-Real-IP. Applied ONLY when Options.TrustProxy is set, i.e. the operator has
+// asserted a reverse proxy overwrites those headers. Without that assertion the
+// socket address is used and cannot be spoofed.
+func trustedProxyIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			if i := strings.IndexByte(xff, ','); i >= 0 {
+				xff = xff[:i]
+			}
+			r.RemoteAddr = strings.TrimSpace(xff)
+		} else if xr := r.Header.Get("X-Real-IP"); xr != "" {
+			r.RemoteAddr = strings.TrimSpace(xr)
 		}
 		next.ServeHTTP(w, r)
 	})

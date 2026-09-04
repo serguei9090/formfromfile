@@ -21,6 +21,17 @@ type Options struct {
 	Auth          *auth.Service
 	AI            ai.Service
 	AllowRegister bool
+	// WebhookAllowPrivate lets webhook targets point at LAN / loopback
+	// addresses (internal deployments). Default false blocks them.
+	WebhookAllowPrivate bool
+	// TrustProxy: honour X-Forwarded-For / X-Real-IP for rate-limit keys.
+	// Only enable behind a reverse proxy that overwrites those headers —
+	// otherwise clients spoof their IP. Default false: use the socket address.
+	TrustProxy bool
+	// TurnstileSiteKey is exposed to the SPA; TurnstileSecret verifies tokens.
+	// Both set → the public fill page shows a challenge and submits are checked.
+	TurnstileSiteKey string
+	TurnstileSecret  string
 	// StaticFS serves the built SPA (web/dist). Nil in dev — Vite proxies /api.
 	StaticFS fs.FS
 }
@@ -30,8 +41,12 @@ func Router(opts Options) http.Handler {
 	h := &handlers{opts: opts}
 
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	if opts.TrustProxy {
+		r.Use(trustedProxyIP)
+	}
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.RealIP)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -39,7 +54,10 @@ func Router(opts Options) http.Handler {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/config", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusOK, map[string]any{"allowRegister": opts.AllowRegister})
+			writeJSON(w, http.StatusOK, map[string]any{
+				"allowRegister":    opts.AllowRegister,
+				"turnstileSiteKey": opts.TurnstileSiteKey,
+			})
 		})
 
 		r.Route("/auth", func(r chi.Router) {

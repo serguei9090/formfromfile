@@ -9,10 +9,11 @@ import (
 // Exponential backoff: the Nth consecutive failure blocks retries for
 // min(2^(N-3) seconds, cap). A success clears the key.
 type throttle struct {
-	mu      sync.Mutex
-	entries map[string]*attempt
-	cap     time.Duration
-	now     func() time.Time // swappable in tests
+	mu        sync.Mutex
+	entries   map[string]*attempt
+	cap       time.Duration
+	now       func() time.Time // swappable in tests
+	lastSweep time.Time
 }
 
 type attempt struct {
@@ -43,6 +44,7 @@ func (t *throttle) allowed(key string) bool {
 func (t *throttle) fail(key string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.maybeSweep()
 	e := t.entries[key]
 	if e == nil {
 		e = &attempt{}
@@ -65,11 +67,15 @@ func (t *throttle) ok(key string) {
 	t.mu.Unlock()
 }
 
-// sweep drops entries whose block has long expired (bounded memory).
-func (t *throttle) sweep() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	cut := t.now().Add(-time.Hour)
+// maybeSweep drops entries whose block has long expired, at most once every
+// 5 minutes. Caller must hold the lock.
+func (t *throttle) maybeSweep() {
+	now := t.now()
+	if now.Sub(t.lastSweep) < 5*time.Minute {
+		return
+	}
+	t.lastSweep = now
+	cut := now.Add(-time.Hour)
 	for k, e := range t.entries {
 		if e.blockedTo.Before(cut) {
 			delete(t.entries, k)

@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/serguei9090/formfromfile/internal/netguard"
 )
 
 // checkClient is used for the async-validation proxy — short timeout, no redirects
@@ -49,7 +49,7 @@ func (h *handlers) validateProxy(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 		return
 	}
-	if !safeOutboundURL(target) {
+	if !netguard.SafeOutboundURL(target) {
 		writeErr(w, http.StatusBadRequest, "check URL not allowed")
 		return
 	}
@@ -83,25 +83,4 @@ func checkURLFor(formJSON, path string) string {
 		return ""
 	}
 	return parsed.Meta[path].CheckURL
-}
-
-func safeOutboundURL(raw string) bool {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
-		return false
-	}
-	host := u.Hostname()
-	if host == "localhost" {
-		return false
-	}
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return false
-	}
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
-			return false
-		}
-	}
-	return true
 }

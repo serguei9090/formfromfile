@@ -6,6 +6,7 @@ import type { PublicTemplate } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Leaf } from '@/app/Leaf'
+import { Turnstile } from '@/app/Turnstile'
 import { useApplyTheme, useThemeStore } from '@/stores/themeStore'
 import { FillForm } from '@/designer/FillForm'
 import { autoMetaFromSchema } from '@/formflow_ext/autoMeta'
@@ -31,6 +32,15 @@ export function PublicFillPage() {
   const { slug } = useParams()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+
+  useEffect(() => {
+    api
+      .get<{ turnstileSiteKey?: string }>('/config')
+      .then((c) => setTurnstileSiteKey(c.turnstileSiteKey ?? ''))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!slug) return
@@ -108,6 +118,11 @@ export function PublicFillPage() {
             <CardTitle>{loaded.name}</CardTitle>
           </CardHeader>
           <CardContent>
+            {turnstileSiteKey ? (
+              <div className="mb-3">
+                <Turnstile siteKey={turnstileSiteKey} onToken={setTurnstileToken} />
+              </div>
+            ) : null}
             <FillForm
               template={loaded.template}
               source={loaded.source}
@@ -118,10 +133,14 @@ export function PublicFillPage() {
                 api.post(`/public/templates/${slug}/check`, { path: metaPath, value })
               }
               onSubmit={async ({ values, output, submitter }) => {
+                if (turnstileSiteKey && !turnstileToken) {
+                  throw new Error('Please complete the challenge above.')
+                }
                 await api.post(`/public/templates/${slug}/submissions`, {
                   submitter,
                   valuesJson: JSON.stringify(values),
                   output,
+                  turnstileToken,
                 })
               }}
             />

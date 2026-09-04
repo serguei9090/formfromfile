@@ -99,6 +99,7 @@ type submissionBody struct {
 	Submitter  string `json:"submitter"`
 	ValuesJSON string `json:"valuesJson"`
 	Output     string `json:"output"`
+	Turnstile  string `json:"turnstileToken"`
 }
 
 func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request) {
@@ -119,6 +120,10 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 	var b submissionBody
 	if err := decode(w, r, &b); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad request body")
+		return
+	}
+	if h.opts.TurnstileSecret != "" && !verifyTurnstile(r.Context(), h.opts.TurnstileSecret, b.Turnstile, clientIP(r)) {
+		writeErr(w, http.StatusForbidden, "captcha check failed — please retry")
 		return
 	}
 	if len(b.ValuesJSON) > store.MaxSubmissionBody || len(b.Output) > store.MaxSubmissionBody {

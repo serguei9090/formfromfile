@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/serguei9090/formfromfile/internal/ai"
@@ -30,9 +31,12 @@ func main() {
 		os.Exit(probeHealth(*addr))
 	}
 
+	setupLogging()
+
 	st, err := store.Open(*dbPath)
 	if err != nil {
-		log.Fatalf("open db: %v", err)
+		slog.Error("open db", "err", err)
+		os.Exit(1)
 	}
 	defer st.Close()
 
@@ -50,11 +54,15 @@ func main() {
 	aiSvc := ai.New()
 
 	h := httpapi.Router(httpapi.Options{
-		Store:         st,
-		Auth:          svc,
-		AI:            aiSvc,
-		AllowRegister: *allowRegister,
-		StaticFS:      staticFS,
+		Store:               st,
+		Auth:                svc,
+		AI:                  aiSvc,
+		AllowRegister:       *allowRegister,
+		WebhookAllowPrivate: truthy(os.Getenv("FFF_WEBHOOK_ALLOW_PRIVATE")),
+		TrustProxy:          truthy(os.Getenv("FFF_TRUST_PROXY")),
+		TurnstileSiteKey:    os.Getenv("FFF_TURNSTILE_SITE_KEY"),
+		TurnstileSecret:     os.Getenv("FFF_TURNSTILE_SECRET"),
+		StaticFS:            staticFS,
 	})
 
 	srv := &http.Server{
@@ -63,9 +71,36 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	n, _ := st.CountUsers()
-	log.Printf("formfromfile listening on %s (db=%s, users=%d, register=%v, spa=%v, ai=%v)",
-		*addr, *dbPath, n, *allowRegister, staticFS != nil, aiSvc.Enabled())
-	log.Fatal(srv.ListenAndServe())
+	slog.Info("listening",
+		"addr", *addr, "db", *dbPath, "users", n,
+		"register", *allowRegister, "spa", staticFS != nil, "ai", aiSvc.Enabled())
+	if err := srv.ListenAndServe(); err != nil {
+		slog.Error("server stopped", "err", err)
+		os.Exit(1)
+	}
+}
+
+// setupLogging configures slog. Text to stderr by default; FFF_LOG_FORMAT=json
+// switches to JSON lines (use in containers / prod). FFF_LOG_LEVEL sets the
+// threshold (debug|info|warn|error).
+func setupLogging() {
+	lvl := new(slog.LevelVar)
+	switch strings.ToLower(os.Getenv("FFF_LOG_LEVEL")) {
+	case "debug":
+		lvl.Set(slog.LevelDebug)
+	case "warn":
+		lvl.Set(slog.LevelWarn)
+	case "error":
+		lvl.Set(slog.LevelError)
+	default:
+		lvl.Set(slog.LevelInfo)
+	}
+	opts := &slog.HandlerOptions{Level: lvl}
+	var h slog.Handler = slog.NewTextHandler(os.Stderr, opts)
+	if strings.EqualFold(os.Getenv("FFF_LOG_FORMAT"), "json") {
+		h = slog.NewJSONHandler(os.Stderr, opts)
+	}
+	slog.SetDefault(slog.New(h))
 }
 
 func envOr(key, def string) string {
@@ -73,6 +108,14 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func truthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 // probeHealth GETs http://<addr>/healthz (rewriting 0.0.0.0 / empty host to

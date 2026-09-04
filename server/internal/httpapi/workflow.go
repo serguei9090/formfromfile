@@ -58,6 +58,11 @@ func (h *handlers) addWebhook(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "url must be http(s)")
 		return
 	}
+	if !webhook.URLAllowed(b.URL, h.opts.WebhookAllowPrivate) {
+		writeErr(w, http.StatusBadRequest,
+			"that URL isn't allowed (must be https and public; set FFF_WEBHOOK_ALLOW_PRIVATE for internal targets)")
+		return
+	}
 	wh, err := h.opts.Store.AddWebhook(currentUser(r).ID, chi.URLParam(r, "id"), b.URL, b.Events)
 	if handleErr(w, err, "schema not found") {
 		return
@@ -90,7 +95,7 @@ func (h *handlers) fireSubmissionWebhooks(templateID, event string, sub *store.S
 	for i, wh := range rows {
 		targets[i] = webhook.Target{ID: wh.ID, URL: wh.URL, Secret: wh.Secret, Events: wh.Events}
 	}
-	webhook.Fire(targets, templateID, event, sub, sub.Output,
+	webhook.Fire(targets, templateID, event, sub, sub.Output, h.opts.WebhookAllowPrivate,
 		func(id string, code, attempts int, errMsg string) {
 			h.opts.Store.RecordDelivery(id, event, code, attempts, errMsg)
 		})
