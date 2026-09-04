@@ -69,8 +69,9 @@ reaches the page can create an account.
 
 `FFF_ALLOW_REGISTER`, `FFF_TURNSTILE_SITE_KEY` / `_SECRET`,
 `FFF_WEBHOOK_ALLOW_PRIVATE`, `FFF_AI_BETA`, a default submission cap, a
-per-form submission cooldown, and a global daily submission ceiling can all be
-set live from **Admin → Settings** in the app. A stored setting wins
+per-form submission cooldown, a global daily submission ceiling, and a default
+submission-retention window can all be set live from **Admin → Settings** in
+the app. A stored setting wins
 over the env var; "reset" drops it and the env/default applies again. The env
 vars are still the right way to seed a fresh deploy and to keep secrets out of
 the database UI where possible (the Turnstile secret, if set via the panel, is
@@ -155,6 +156,25 @@ incoming webhook or an alerting endpoint. It is not run through the SSRF guard
 **CI scanning.** `govulncheck` (Go advisories) runs in the server job and
 Trivy scans the image in the docker job — both non-blocking for now (flip
 `continue-on-error` off in `.github/workflows/ci.yml` once they stay green).
+
+---
+
+## Data retention & GDPR
+
+- **Auto-delete.** Set a per-form window in the form's ops panel ("delete
+  submissions older than N days"), or an org-wide default in **Admin →
+  Settings**. An hourly sweep removes anything past its window; `0` (the
+  default) keeps submissions forever. Each purge is recorded in the
+  data-operations log (Admin page).
+- **Export a user's data.** Admin → the ⬇ icon on a user row →
+  `GET /api/admin/users/{id}/export` returns a JSON file: the account, their
+  templates (with bodies), submissions to those templates, and submissions
+  they filled elsewhere.
+- **Erase a user.** Admin → the 🗑 icon → type `ERASE`. Hard-deletes the
+  account; SQLite FK rules cascade their templates + versions + webhooks + the
+  submissions on those templates, and null out their authorship on comments,
+  audit rows, and forms they filled elsewhere. The last admin can't be erased.
+  Logged to data-operations.
 
 ---
 
@@ -323,7 +343,7 @@ MinIO, R2).
 docker compose build app && docker compose up -d app
 ```
 
-Migrations run automatically on boot (`PRAGMA user_version`, currently v5) and
+Migrations run automatically on boot (`PRAGMA user_version`, currently v7) and
 are append-only — a newer binary upgrades an older DB in place. **Take a backup
 before a major bump anyway.** Rolling back to an older binary against a
 migrated DB is *not* supported (the schema is ahead).

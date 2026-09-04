@@ -18,13 +18,14 @@ const (
 	setSubmissionCapDefault   = "submission_cap_default"
 	setSubmissionCooldownSecs = "submission_cooldown_seconds"
 	setSubmissionGlobalDaily  = "submission_global_daily_max"
+	setRetentionDaysDefault   = "retention_days_default"
 )
 
 // settingKeys is the allow-list the PUT handler validates against.
 var settingKeys = []string{
 	setAllowRegister, setTurnstileSiteKey, setTurnstileSecret,
 	setWebhookAllowPrivate, setAIBeta, setSubmissionCapDefault,
-	setSubmissionCooldownSecs, setSubmissionGlobalDaily,
+	setSubmissionCooldownSecs, setSubmissionGlobalDaily, setRetentionDaysDefault,
 }
 
 // boolSettingKeys / intSettingKeys drive type validation on write.
@@ -35,6 +36,7 @@ var intSettingKeys = map[string]bool{
 	setSubmissionCapDefault:   true,
 	setSubmissionCooldownSecs: true,
 	setSubmissionGlobalDaily:  true,
+	setRetentionDaysDefault:   true,
 }
 
 // secretSettingKeys never leave the server in a readable form.
@@ -51,6 +53,7 @@ type effConfig struct {
 	SubmissionCapDefault int
 	SubmissionCooldown   int // seconds between submissions to one form; 0 = off
 	SubmissionGlobalMax  int // accepted public submissions per UTC day; 0 = off
+	RetentionDaysDefault int // auto-delete submissions older than N days (0 = keep)
 }
 
 // cfg returns the effective config, recomputed at most every 5s (or on the
@@ -110,6 +113,7 @@ func applySettings(c *effConfig, m map[string]string) {
 	c.SubmissionCapDefault = intSetting(m, setSubmissionCapDefault, c.SubmissionCapDefault)
 	c.SubmissionCooldown = intSetting(m, setSubmissionCooldownSecs, c.SubmissionCooldown)
 	c.SubmissionGlobalMax = intSetting(m, setSubmissionGlobalDaily, c.SubmissionGlobalMax)
+	c.RetentionDaysDefault = intSetting(m, setRetentionDaysDefault, c.RetentionDaysDefault)
 }
 
 func intSetting(m map[string]string, key string, fallback int) int {

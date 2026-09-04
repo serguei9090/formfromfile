@@ -59,11 +59,12 @@ func (s *Store) SubmissionCount(templateID string) int {
 	return n
 }
 
-// SetTemplateOps updates the submission cap + brand JSON for a template.
-func (s *Store) SetTemplateOps(userID, id string, cap int, brand string) (*Schema, error) {
+// SetTemplateOps updates the submission cap, brand JSON and retention window
+// for a template.
+func (s *Store) SetTemplateOps(userID, id string, cap, retentionDays int, brand string) (*Schema, error) {
 	res, err := s.DB.Exec(
-		`UPDATE schemas SET submission_cap = ?, brand = ? WHERE id = ? AND user_id = ?`,
-		cap, brand, id, userID)
+		`UPDATE schemas SET submission_cap = ?, brand = ?, retention_days = ? WHERE id = ? AND user_id = ?`,
+		cap, brand, retentionDays, id, userID)
 	if err != nil {
 		return nil, err
 	}

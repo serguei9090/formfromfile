@@ -29,6 +29,7 @@ export interface SchemaSummary {
   submissionCap: number
   brand?: string
   viewCount: number
+  retentionDays: number
   createdAt: number
   updatedAt: number
 }
@@ -62,6 +63,15 @@ export interface AuditEntry {
   actorEmail: string
   action: string
   target: string
+  detail?: string
+  createdAt: number
+}
+
+export interface DataOpEntry {
+  id: string
+  actor: string
+  action: string
+  subject: string
   detail?: string
   createdAt: number
 }

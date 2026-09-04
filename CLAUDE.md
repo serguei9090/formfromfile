@@ -194,7 +194,7 @@ fork / approval queue; conditional/computed/cross-field/async validation
 `author` role + `requireAuthor`; submission comments; HMAC webhooks
 (`internal/webhook`) + delivery log; `submissions.zip`; audit log; per-form
 submission cap + branding + completion analytics; order-preserving XML render.
-Migrations run to **v5** (F29b → **v6**). **Deferred:** F24 (HCL/systemd/… formats +
+Migrations run to **v7** (F29b v6, F29e v7). **Deferred:** F24 (HCL/systemd/… formats +
 full-fidelity + bulk CSV fill), email-on-submit, hCaptcha, i18n, PWA;
 **parked:** F27 integrations (GitHub PR, CLI, OIDC).
 
@@ -214,15 +214,16 @@ row › startup value, 5s cache): `GET`/`PUT /api/admin/settings`, an
 webhook-allow-private / AI beta / default submission cap with **no restart**.
 `--session-secret` dropped.
 
-**F29c+d done** — `internal/metrics` (hand-rolled Prometheus text); `GET
+**F29c+d+e done** — `internal/metrics` (hand-rolled Prometheus text); `GET
 /metrics` gated by `FFF_METRICS_TOKEN` (bearer); `h.recoverer` logs panics +
 POSTs `FFF_ERROR_WEBHOOK`; CI gains `govulncheck` + Trivy (non-blocking).
 `httpapi/submitguard.go` — per-slug submission cooldown + global daily ceiling
-(settings `submission_cooldown_seconds` / `submission_global_daily_max`, 0=off).
+(settings, 0=off). Migration **v7**: `schemas.retention_days` + `data_ops_log`;
+`store/retention.go` (hourly purge goroutine in `main.go`, `ExportUser` /
+`EraseUser`); `GET /api/admin/users/{id}/export`, `POST .../erase`,
+`GET /api/admin/data-ops`.
 
-**Next (F29e):** [`PLAN-F29.md`](PLAN-F29.md) — data retention + GDPR
-export/delete (migration v7, + an `ai_usage` table for an AI $ budget).
-Everything ships dormant.
+**PLAN-F29 complete.** Deferred: AI $ budget (needs SDK token accounting).
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

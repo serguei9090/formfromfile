@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
-import type { AuditEntry, Role, User } from '@/api/types'
+import type { AuditEntry, DataOpEntry, Role, User } from '@/api/types'
 import { Card } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ export function AdminPage() {
   const me = useAuthStore((s) => s.user)
   const [users, setUsers] = useState<User[] | null>(null)
   const [audit, setAudit] = useState<AuditEntry[]>([])
+  const [dataOps, setDataOps] = useState<DataOpEntry[]>([])
   const [error, setError] = useState('')
 
   const load = () =>
@@ -29,6 +30,10 @@ export function AdminPage() {
     api
       .get<{ entries: AuditEntry[] }>('/admin/audit?limit=100')
       .then((r) => setAudit(r.entries ?? []))
+      .catch(() => {})
+    api
+      .get<{ entries: DataOpEntry[] }>('/admin/data-ops?limit=100')
+      .then((r) => setDataOps(r.entries ?? []))
       .catch(() => {})
   }, [])
 
@@ -86,6 +91,31 @@ export function AdminPage() {
               >
                 {u.disabled ? 'Enable' : 'Disable'}
               </Button>
+              <a
+                href={`/api/admin/users/${u.id}/export`}
+                className="text-muted-foreground hover:text-foreground"
+                title="Export this user's data (GDPR)"
+                aria-label="Export user data"
+              >
+                <Download className="size-4" />
+              </a>
+              {u.id !== me?.id ? (
+                <button
+                  className="text-muted-foreground hover:text-destructive"
+                  title="Erase this user and all their data"
+                  aria-label="Erase user"
+                  onClick={() => {
+                    if (
+                      prompt(
+                        `Type ERASE to permanently delete ${u.email}, their templates and all submissions to them.`,
+                      ) === 'ERASE'
+                    )
+                      void act(() => api.post(`/admin/users/${u.id}/erase`, { confirm: 'ERASE' }))
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              ) : null}
             </Card>
           ))}
         </div>
@@ -95,6 +125,28 @@ export function AdminPage() {
         <h2 className="text-lg font-semibold tracking-tight">Settings</h2>
         <AdminSettings />
       </section>
+
+      {dataOps.length > 0 ? (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground">
+            Data operations — retention purges, exports, erasures ({dataOps.length})
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {dataOps.map((d) => (
+              <li key={d.id} className="flex gap-2">
+                <span className="text-muted-foreground">
+                  {new Date(d.createdAt).toLocaleString()}
+                </span>
+                <span className="font-medium">{d.actor || 'system'}</span>
+                <span className="font-mono">{d.action}</span>
+                <span className="truncate text-muted-foreground">
+                  {d.subject} {d.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       {audit.length > 0 ? (
         <details className="text-xs">

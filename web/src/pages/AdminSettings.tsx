@@ -271,6 +271,14 @@ export function AdminSettings() {
           hint="Total accepted public submissions per day across all forms. 0 = off."
           onSave={(v) => void put('submission_global_daily_max', v)}
         />
+        <NumField
+          id="retention"
+          label="Default submission retention (days)"
+          source={src.retention_days_default}
+          value={eff.retention_days_default}
+          hint="Auto-delete submissions older than this for forms without their own retention window. Runs hourly. 0 = keep forever."
+          onSave={(v) => void put('retention_days_default', v)}
+        />
       </Card>
     </div>
   )

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,6 +55,7 @@ func main() {
 
 	aiSvc := ai.New()
 	registerMetrics(st, *dbPath)
+	startRetentionSweep(st)
 
 	h := httpapi.Router(httpapi.Options{
 		Store:                  st,
@@ -127,6 +129,35 @@ func registerMetrics(st *store.Store, dbPath string) {
 		}
 		return float64(fi.Size())
 	})
+}
+
+// startRetentionSweep runs an hourly pass that deletes submissions past their
+// template's retention window (or the `retention_days_default` setting). It is
+// a no-op until a window is configured, so it costs one cheap query/hour.
+func startRetentionSweep(st *store.Store) {
+	sweep := func() {
+		def := 0
+		if v, ok, _ := st.GetSetting("retention_days_default"); ok {
+			def, _ = strconv.Atoi(v)
+		}
+		n, err := st.PurgeExpiredSubmissions(def)
+		if err != nil {
+			slog.Error("retention sweep", "err", err)
+			return
+		}
+		if n > 0 {
+			slog.Info("retention sweep", "deleted", n)
+			st.LogDataOp("system", "retention.purge", "", strconv.FormatInt(n, 10)+" submissions")
+		}
+	}
+	go func() {
+		sweep()
+		t := time.NewTicker(time.Hour)
+		defer t.Stop()
+		for range t.C {
+			sweep()
+		}
+	}()
 }
 
 func envOr(key, def string) string {

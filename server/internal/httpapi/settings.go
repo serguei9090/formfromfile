@@ -47,6 +47,7 @@ func (h *handlers) getSettings(w http.ResponseWriter, _ *http.Request) {
 		setSubmissionCapDefault:   c.SubmissionCapDefault,
 		setSubmissionCooldownSecs: c.SubmissionCooldown,
 		setSubmissionGlobalDaily:  c.SubmissionGlobalMax,
+		setRetentionDaysDefault:   c.RetentionDaysDefault,
 	}
 
 	// "override" = a settings row is in force; "base" = the value Router() was

@@ -447,6 +447,68 @@ func TestSubmissionCooldownAndDailyCeiling(t *testing.T) {
 	}
 }
 
+func TestGDPRExportAndErase(t *testing.T) {
+	e := newEnv(t)
+	admin := e.authed(t) // u1 = admin
+
+	// a second account to act on
+	fjar, _ := cookiejar.New(nil)
+	filler := &http.Client{Jar: fjar}
+	_, out := e.do(t, filler, "POST", "/api/auth/register",
+		map[string]string{"email": "victim@example.com", "password": "correct-horse-9"})
+	uid := out["user"].(map[string]any)["id"].(string)
+
+	// non-admin can't export
+	if res, _ := e.do(t, filler, "GET", "/api/admin/users/"+uid+"/export", nil); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("filler export: want 403, got %d", res.StatusCode)
+	}
+
+	// admin export returns the account + an attachment header
+	res, _ := e.do(t, admin, "GET", "/api/admin/users/"+uid+"/export", nil)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("admin export: %d", res.StatusCode)
+	}
+	if cd := res.Header.Get("Content-Disposition"); !strings.Contains(cd, "attachment") {
+		t.Fatalf("no attachment header: %q", cd)
+	}
+
+	// erase needs the confirm token
+	if res, _ := e.do(t, admin, "POST", "/api/admin/users/"+uid+"/erase", map[string]string{}); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("erase without confirm: want 400, got %d", res.StatusCode)
+	}
+	if res, _ := e.do(t, admin, "POST", "/api/admin/users/"+uid+"/erase",
+		map[string]string{"confirm": "ERASE"}); res.StatusCode != http.StatusOK {
+		t.Fatalf("erase: %d", res.StatusCode)
+	}
+	// gone
+	if res, _ := e.do(t, admin, "GET", "/api/admin/users/"+uid+"/export", nil); res.StatusCode != http.StatusNotFound {
+		t.Fatalf("export after erase: want 404, got %d", res.StatusCode)
+	}
+	// admin can't erase self
+	selfID := ""
+	_, ul := e.do(t, admin, "GET", "/api/admin/users", nil)
+	for _, u := range ul["users"].([]any) {
+		um := u.(map[string]any)
+		if um["email"] == "admin@example.com" {
+			selfID = um["id"].(string)
+		}
+	}
+	if res, _ := e.do(t, admin, "POST", "/api/admin/users/"+selfID+"/erase",
+		map[string]string{"confirm": "ERASE"}); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("erase self: want 400, got %d", res.StatusCode)
+	}
+
+	// the ops were logged
+	_, dl := e.do(t, admin, "GET", "/api/admin/data-ops", nil)
+	acts := map[string]bool{}
+	for _, o := range dl["entries"].([]any) {
+		acts[o.(map[string]any)["action"].(string)] = true
+	}
+	if !acts["user.export"] || !acts["user.erase"] {
+		t.Fatalf("data-ops missing entries: %v", acts)
+	}
+}
+
 func TestAIDisabledWithoutKey(t *testing.T) {
 	e := newEnv(t) // Router built with no AI service
 	owner := e.authed(t)

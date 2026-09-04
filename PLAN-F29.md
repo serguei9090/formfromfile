@@ -78,6 +78,16 @@ investigation, do it whenever.
   before the schema load and committed only after the row is stored.
   `Retry-After` on the cooldown 429. Overridable `clock` for tests. Admin
   panel gains the two number fields. +1 test (fake clock).
+- **F29e done** — migration **v7**: `schemas.retention_days` + `data_ops_log`.
+  `store/retention.go`: `PurgeExpiredSubmissions` (per-template window ›
+  `retention_days_default` setting), `ExportUser` / `EraseUser` (FK-cascade
+  hard delete, last-admin guard), `LogDataOp` / `RecentDataOps`. Hourly sweep
+  goroutine in `main.go` (no-op until a window is set).
+  `GET /api/admin/users/{id}/export` (JSON attachment),
+  `POST .../erase` (`{"confirm":"ERASE"}`), `GET /api/admin/data-ops`. Ops
+  panel + admin page gain the controls. +6 tests. **AI $ budget still
+  deferred** — needs token accounting from the SDK response, not just the
+  table.
 
 ---
 

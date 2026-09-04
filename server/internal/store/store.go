@@ -144,6 +144,20 @@ var migrations = []string{
 	   updated_at INTEGER NOT NULL,
 	   updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
 	 );`,
+
+	// v7 — data retention + GDPR (F29e): a per-template retention window
+	// (0 = keep forever, the default) and a log of retention / export /
+	// erase operations.
+	`ALTER TABLE schemas ADD COLUMN retention_days INTEGER NOT NULL DEFAULT 0;
+	 CREATE TABLE data_ops_log (
+	   id         TEXT PRIMARY KEY,
+	   actor      TEXT NOT NULL DEFAULT '',
+	   action     TEXT NOT NULL,
+	   subject    TEXT NOT NULL DEFAULT '',
+	   detail     TEXT NOT NULL DEFAULT '',
+	   created_at INTEGER NOT NULL
+	 );
+	 CREATE INDEX ix_dol_time ON data_ops_log(created_at DESC);`,
 }
 
 func migrate(db *sql.DB) error {

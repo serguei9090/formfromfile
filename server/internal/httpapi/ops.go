@@ -27,6 +27,7 @@ func (h *handlers) setTemplateOps(w http.ResponseWriter, r *http.Request) {
 	var b struct {
 		SubmissionCap int    `json:"submissionCap"`
 		Brand         string `json:"brand"`
+		RetentionDays int    `json:"retentionDays"`
 	}
 	if err := decode(w, r, &b); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad request body")
@@ -35,11 +36,14 @@ func (h *handlers) setTemplateOps(w http.ResponseWriter, r *http.Request) {
 	if b.SubmissionCap < 0 {
 		b.SubmissionCap = 0
 	}
+	if b.RetentionDays < 0 {
+		b.RetentionDays = 0
+	}
 	if len(b.Brand) > 200_000 {
 		writeErr(w, http.StatusBadRequest, "brand too large")
 		return
 	}
-	sc, err := h.opts.Store.SetTemplateOps(currentUser(r).ID, chi.URLParam(r, "id"), b.SubmissionCap, b.Brand)
+	sc, err := h.opts.Store.SetTemplateOps(currentUser(r).ID, chi.URLParam(r, "id"), b.SubmissionCap, b.RetentionDays, b.Brand)
 	if handleErr(w, err, "schema not found") {
 		return
 	}

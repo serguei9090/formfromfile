@@ -263,11 +263,31 @@ export function SubmissionsPage() {
                 await api.post(`/schemas/${template.id}/ops`, {
                   submissionCap: cap,
                   brand: template.brand ?? '',
+                  retentionDays: template.retentionDays ?? 0,
                 })
                 setTemplate({ ...template, submissionCap: cap })
               }}
             />
             submissions (0 = unlimited)
+          </label>
+          <label className="flex items-center gap-2">
+            Delete submissions older than
+            <input
+              type="number"
+              min={0}
+              className="h-7 w-20 rounded-md border border-input bg-card px-2"
+              defaultValue={template.retentionDays || 0}
+              onBlur={async (e) => {
+                const retentionDays = Number(e.target.value) || 0
+                await api.post(`/schemas/${template.id}/ops`, {
+                  submissionCap: template.submissionCap,
+                  brand: template.brand ?? '',
+                  retentionDays,
+                })
+                setTemplate({ ...template, retentionDays })
+              }}
+            />
+            days (0 = keep forever)
           </label>
           <label className="flex items-center gap-2">
             Public page accent
@@ -286,6 +306,7 @@ export function SubmissionsPage() {
                 await api.post(`/schemas/${template.id}/ops`, {
                   submissionCap: template.submissionCap,
                   brand,
+                  retentionDays: template.retentionDays ?? 0,
                 })
                 setTemplate({ ...template, brand })
               }}
