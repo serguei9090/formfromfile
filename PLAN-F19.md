@@ -417,6 +417,12 @@ Effort: **XL** — this is "turn a tool into a service". Sequence roughly
 CAPTCHA + SSRF + headers (S–M, do first) → OIDC + workspaces (L) → Postgres +
 observability (L) → the rest as needed.
 
+**CAPTCHA + SSRF done** (v0.2 hardening batch). The next slice — security
+headers/CSP, a runtime **admin settings panel** (toggle Turnstile / register /
+webhook-private / AI beta with no restart), `/metrics` + error capture +
+CI scanning, rate-limit depth, data retention + GDPR — is broken out as its
+own plan: [`PLAN-F29.md`](PLAN-F29.md). Everything there ships dormant.
+
 ---
 
 ## Cross-cutting

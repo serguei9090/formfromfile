@@ -198,6 +198,20 @@ Migrations run to **v5**. **Deferred:** F24 (HCL/systemd/… formats +
 full-fidelity + bulk CSV fill), email-on-submit, hCaptcha, i18n, PWA;
 **parked:** F27 integrations (GitHub PR, CLI, OIDC).
 
+**v0.2 hardening batch done** — SSRF guard (`internal/netguard`) on webhook +
+async-check targets; Cloudflare Turnstile on public forms (`FFF_TURNSTILE_*`,
+blank = off); structured request logging (`log/slog`, `FFF_LOG_FORMAT=json`,
+request IDs); frontend error boundary + toast surface; AI now needs
+`FFF_AI_BETA=true` **and** the key; `golangci-lint` v2 (0 issues) + Playwright
+e2e (`web/e2e/`, `bun run e2e`, CI job); `docker-compose.yml` + `Caddyfile`
+(auto-TLS) for one-command internal deploy; `docs/DEPLOY.md`.
+
+**Next (not started):** [`PLAN-F29.md`](PLAN-F29.md) — security headers/CSP,
+runtime **admin settings panel** (toggle Turnstile / register / webhook-private
+/ AI beta with no restart, `settings` table → v6), `/metrics` + error capture +
+`govulncheck`/Trivy, rate-limit depth, data retention + GDPR export/delete
+(v7). Everything ships dormant (default = today's behaviour).
+
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
 `.dockerignore`. Release build copies `web/dist` into
