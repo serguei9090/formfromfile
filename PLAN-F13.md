@@ -61,9 +61,13 @@ update the note in F14.
   (`server/.golangci.yml`). `authStore.offline` + `schemasStore.error` — stores
   stop swallowing; `Shell` shows a "can't reach the server" banner with retry,
   `HomePage` shows a load-error card. Dockerfile `HEALTHCHECK` via a new
-  `--healthcheck` flag (distroless has no curl). **Deferred:** Playwright e2e —
-  the per-phase browser verification has covered these flows; automating the
-  flaky-under-automation login is a separate task.
+  `--healthcheck` flag (distroless has no curl).
+- **F17 e2e done** — `web/e2e/` Playwright suite (`bun run e2e`): a `setup`
+  project registers the bootstrap admin, then specs cover register→app,
+  unknown share link, detect→export→save in the designer, and
+  publish→anonymous fill→owner-reads-submission. Two `webServer`s: `go run` the
+  API against a throwaway SQLite (`e2e/api-server.mjs`) + Vite. Auth over the
+  API (`page.request`), not the flaky login form. CI `e2e` job.
 - **F14 done** (partial) — `SchemaTree` rows collapse (chevron, `aria-expanded`),
   container rows show a child + "N set" count; a filter box on the Schema card
   (matches key/label, keeps ancestors, force-expands); a **Design ▏ Fill

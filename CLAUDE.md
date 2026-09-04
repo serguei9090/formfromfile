@@ -141,6 +141,7 @@ bun install
 bun run dev        # Vite dev server on :5273 (proxies /api → :8787)
 bun run build      # tsc -b && vite build  → web/dist/
 bun run test       # Vitest
+bun run e2e        # Playwright — boots `go run` API (throwaway SQLite) + Vite
 bun run lint       # oxlint
 
 # server (from server/)

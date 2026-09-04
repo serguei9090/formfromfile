@@ -24,3 +24,10 @@ bin/
 
 # local deploy config
 .env
+
+# playwright e2e
+web/test-results/
+web/playwright-report/
+web/blob-report/
+web/e2e/.tmp/
+web/.last-run.json
