@@ -9,41 +9,6 @@ export interface Sample {
 
 export const SAMPLES: Sample[] = [
   {
-    id: 'tool-xml',
-    name: 'Tool registration (XML)',
-    kind: 'XML',
-    blurb: 'Attribute-driven field defs + %tokens% — the InfraKit tooling shape.',
-    body: `<?xml version="1.0" encoding="UTF-8"?>
-<!-- Simple tool template -->
-<Tool>
-  <Name>DEFAULT</Name>
-  <Type>Simple</Type>
-  <Inherited>false</Inherited>
-  <Services>
-    <FTP>
-      <FTPUser>ftpacct</FTPUser>
-      <FTPPassword>password</FTPPassword>
-      <FTPPort>21</FTPPort>
-      <FTPMode>Passive</FTPMode>
-    </FTP>
-  </Services>
-  <newToolUI>
-    <fields>
-      <field editor="Toolname" isRequired="true" name="Name"/>
-      <field editor="IPv4-or-Hostname" isRequired="true" name="IP Address"/>
-    </fields>
-    <instanceXML>
-      <Name>%Name%</Name>
-      <ChatConfiguration>%IP Address%:9000</ChatConfiguration>
-      <Services>
-        <FTP><FTPHostName>%IP Address%</FTPHostName></FTP>
-      </Services>
-    </instanceXML>
-  </newToolUI>
-</Tool>
-`,
-  },
-  {
     id: 'k8s-yaml',
     name: 'Kubernetes Deployment (YAML)',
     kind: 'YAML',

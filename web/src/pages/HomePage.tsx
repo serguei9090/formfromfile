@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Check, Copy, FilePlus2, Link2, PencilLine, SquarePen, Trash2 } from 'lucide-react'
+import { api } from '@/api/client'
 import { buttonVariants } from '@/components/ui/button'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -32,7 +33,28 @@ export function HomePage() {
   // link) but the template is private again, so a stale slug alone must not
   // skip the publish call on the next "Publish" click.
   async function share(id: string, already: boolean, slug?: string) {
-    const s = already ? slug : (await publish(id)).shareSlug
+    let s = slug
+    if (!already) {
+      // asked once, at the moment a template first goes live — later changes
+      // of mind go through the "Who can access this link" control on the
+      // submissions page.
+      const restricted = confirm(
+        'Restrict this form to signed-in users only?\n\n' +
+          'OK — only people signed in to this app can view or fill it\n' +
+          'Cancel — anyone with the link (default)',
+      )
+      const rec = await publish(id)
+      s = rec.shareSlug
+      if (restricted) {
+        await api.post(`/schemas/${id}/ops`, {
+          submissionCap: rec.submissionCap,
+          brand: rec.brand ?? '',
+          retentionDays: rec.retentionDays ?? 0,
+          publicAccess: 'authenticated',
+        })
+        await refresh()
+      }
+    }
     if (!s) return
     const url = `${location.origin}/f/${s}`
     try {

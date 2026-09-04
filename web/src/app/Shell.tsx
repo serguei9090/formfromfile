@@ -31,7 +31,7 @@ export function Shell() {
         {user ? <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span> : null}
         {user?.role === 'admin' ? (
           <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground">
-            Users
+            Admin
           </Link>
         ) : null}
         <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">

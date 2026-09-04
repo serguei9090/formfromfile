@@ -133,8 +133,16 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
   )
 }
 
+type Tab = 'users' | 'settings' | 'activity'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'users', label: 'Users' },
+  { id: 'settings', label: 'Settings' },
+  { id: 'activity', label: 'Activity' },
+]
+
 export function AdminPage() {
   const me = useAuthStore((s) => s.user)
+  const [tab, setTab] = useState<Tab>('users')
   const [users, setUsers] = useState<User[] | null>(null)
   const [audit, setAudit] = useState<AuditEntry[]>([])
   const [dataOps, setDataOps] = useState<DataOpEntry[]>([])
@@ -175,120 +183,146 @@ export function AdminPage() {
         <Link to="/" className="text-muted-foreground hover:text-foreground" aria-label="Back">
           <ArrowLeft className="size-4" />
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-      </div>
-      <AddUserForm onCreated={load} />
-
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {users == null ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : (
-        <div className="grid gap-2">
-          {users.map((u) => (
-            <Card key={u.id} className="flex items-center gap-3 p-3 text-sm">
-              <span className={`min-w-0 flex-1 truncate ${u.disabled ? 'line-through opacity-60' : ''}`}>
-                {u.email}
-              </span>
-              <Select
-                value={u.role}
-                onChange={(e) =>
-                  void act(() =>
-                    api.post(`/admin/users/${u.id}/role`, { role: e.target.value as Role }),
-                  )
-                }
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </Select>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  void act(() =>
-                    api.post(`/admin/users/${u.id}/disable`, { disabled: !u.disabled }),
-                  )
-                }
-              >
-                {u.disabled ? 'Enable' : 'Disable'}
-              </Button>
-              <a
-                href={`/api/admin/users/${u.id}/export`}
-                className="text-muted-foreground hover:text-foreground"
-                title="Export this user's data (GDPR)"
-                aria-label="Export user data"
-              >
-                <Download className="size-4" />
-              </a>
-              {u.id !== me?.id ? (
-                <button
-                  className="text-muted-foreground hover:text-destructive"
-                  title="Erase this user and all their data"
-                  aria-label="Erase user"
-                  onClick={() => {
-                    if (
-                      prompt(
-                        `Type ERASE to permanently delete ${u.email}, their templates and all submissions to them.`,
-                      ) === 'ERASE'
-                    )
-                      void act(() => api.post(`/admin/users/${u.id}/erase`, { confirm: 'ERASE' }))
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              ) : null}
-            </Card>
+        <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+        <div className="flex-1" />
+        <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`px-3 py-1.5 ${tab === t.id ? 'bg-primary text-primary-foreground' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
           ))}
         </div>
-      )}
+      </div>
 
-      <section className="space-y-3 border-t border-border/60 pt-5">
-        <h2 className="text-lg font-semibold tracking-tight">Settings</h2>
-        <AdminSettings />
-      </section>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      {dataOps.length > 0 ? (
-        <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground">
-            Data operations — retention purges, exports, erasures ({dataOps.length})
-          </summary>
-          <ul className="mt-2 space-y-1">
-            {dataOps.map((d) => (
-              <li key={d.id} className="flex gap-2">
-                <span className="text-muted-foreground">
-                  {new Date(d.createdAt).toLocaleString()}
-                </span>
-                <span className="font-medium">{d.actor || 'system'}</span>
-                <span className="font-mono">{d.action}</span>
-                <span className="truncate text-muted-foreground">
-                  {d.subject} {d.detail}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
+      {tab === 'users' ? (
+        <>
+          <AddUserForm onCreated={load} />
+          {users == null ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <div className="grid gap-2">
+              {users.map((u) => (
+                <Card key={u.id} className="flex items-center gap-3 p-3 text-sm">
+                  <span
+                    className={`min-w-0 flex-1 truncate ${u.disabled ? 'line-through opacity-60' : ''}`}
+                  >
+                    {u.email}
+                  </span>
+                  <Select
+                    value={u.role}
+                    onChange={(e) =>
+                      void act(() =>
+                        api.post(`/admin/users/${u.id}/role`, { role: e.target.value as Role }),
+                      )
+                    }
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      void act(() =>
+                        api.post(`/admin/users/${u.id}/disable`, { disabled: !u.disabled }),
+                      )
+                    }
+                  >
+                    {u.disabled ? 'Enable' : 'Disable'}
+                  </Button>
+                  <a
+                    href={`/api/admin/users/${u.id}/export`}
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Export this user's data (GDPR)"
+                    aria-label="Export user data"
+                  >
+                    <Download className="size-4" />
+                  </a>
+                  {u.id !== me?.id ? (
+                    <button
+                      className="text-muted-foreground hover:text-destructive"
+                      title="Erase this user and all their data"
+                      aria-label="Erase user"
+                      onClick={() => {
+                        if (
+                          prompt(
+                            `Type ERASE to permanently delete ${u.email}, their templates and all submissions to them.`,
+                          ) === 'ERASE'
+                        )
+                          void act(() => api.post(`/admin/users/${u.id}/erase`, { confirm: 'ERASE' }))
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  ) : null}
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       ) : null}
 
-      {audit.length > 0 ? (
-        <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground">Audit log ({audit.length})</summary>
-          <ul className="mt-2 space-y-1">
-            {audit.map((a) => (
-              <li key={a.id} className="flex gap-2">
-                <span className="text-muted-foreground">
-                  {new Date(a.createdAt).toLocaleString()}
-                </span>
-                <span className="font-medium">{a.actorEmail || 'system'}</span>
-                <span className="font-mono">{a.action}</span>
-                <span className="truncate text-muted-foreground">
-                  {a.target} {a.detail}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
+      {tab === 'settings' ? <AdminSettings /> : null}
+
+      {tab === 'activity' ? (
+        <div className="space-y-4">
+          {dataOps.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No data operations recorded yet.</p>
+          ) : (
+            <details open className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">
+                Data operations — retention purges, exports, erasures ({dataOps.length})
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {dataOps.map((d) => (
+                  <li key={d.id} className="flex gap-2">
+                    <span className="text-muted-foreground">
+                      {new Date(d.createdAt).toLocaleString()}
+                    </span>
+                    <span className="font-medium">{d.actor || 'system'}</span>
+                    <span className="font-mono">{d.action}</span>
+                    <span className="truncate text-muted-foreground">
+                      {d.subject} {d.detail}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {audit.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No audit entries recorded yet.</p>
+          ) : (
+            <details open className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">
+                Audit log ({audit.length})
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {audit.map((a) => (
+                  <li key={a.id} className="flex gap-2">
+                    <span className="text-muted-foreground">
+                      {new Date(a.createdAt).toLocaleString()}
+                    </span>
+                    <span className="font-medium">{a.actorEmail || 'system'}</span>
+                    <span className="font-mono">{a.action}</span>
+                    <span className="truncate text-muted-foreground">
+                      {a.target} {a.detail}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
       ) : null}
     </div>
   )

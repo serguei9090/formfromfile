@@ -4,7 +4,8 @@ import { loginAsAdmin } from './helpers'
 test('admin settings toggle: disable registration, then reset', async ({ page }) => {
   await loginAsAdmin(page)
   await page.goto('/admin')
-  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Access' })).toBeVisible()
 
   const toggle = page.getByRole('checkbox', { name: 'Allow public self-registration' })
   await expect(toggle).toBeChecked()

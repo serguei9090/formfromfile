@@ -270,6 +270,15 @@ shows a sign-in prompt on 401; `AuthCard` honors `?redirect=` (relative-path
 only) after login/register/Google sign-in so a blocked filler lands back on
 the form. See [`PLAN-F32.md`](PLAN-F32.md).
 
+**Follow-up UX fixes (post-F32)** — `AdminPage` restructured into Users /
+Settings / Activity tabs (was one long scrolling page mixing all three);
+`HomePage`'s first Publish click now asks "restrict to signed-in users only?"
+before minting the link (native `confirm()`, matching the existing
+delete/erase-confirmation style) instead of always defaulting to fully
+public with no choice; removed the "Tool registration (XML)" sample
+(`web/src/data/samples.ts`) — its body mirrored InfraKit's internal
+tool-config shape and had no place in a public sample gallery.
+
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
 `.dockerignore`. Release build copies `web/dist` into
