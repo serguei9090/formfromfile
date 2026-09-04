@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Copy, Download, FileDown, FileSearch, Save, Upload } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { ArrowLeft, Copy, Download, FileDown, FileSearch, Save, Upload } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -331,6 +331,9 @@ export function DesignerPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
+        <Link to="/" className="text-muted-foreground hover:text-foreground" aria-label="Back to My Forms">
+          <ArrowLeft className="size-4" />
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Designer</h1>
         {schema ? (
           <span className="rounded bg-accent px-2 py-0.5 text-xs font-medium uppercase text-accent-foreground">

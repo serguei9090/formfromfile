@@ -10,6 +10,50 @@ import { SAMPLES } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
 import { useAuthStore } from '@/stores/authStore'
 
+/** Shown once, the moment a draft first goes live — Cancel genuinely aborts
+ *  (no publish call at all), unlike a native confirm() where dismissing it
+ *  is easy to do reflexively and would otherwise silently fall through to
+ *  the more exposed "anyone" option. */
+function PublishChoiceModal({
+  name,
+  onChoose,
+  onCancel,
+}: {
+  name: string
+  onChoose: (restricted: boolean) => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onCancel}
+      role="presentation"
+    >
+      <Card
+        className="w-full max-w-sm space-y-4 p-5"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Who can access this link"
+      >
+        <div>
+          <h3 className="text-sm font-semibold">Publish "{name}"</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Who should be able to open this link?</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button onClick={() => onChoose(false)}>Anyone with the link</Button>
+          <Button variant="outline" onClick={() => onChoose(true)}>
+            Signed-in users only
+          </Button>
+          <button className="text-xs text-muted-foreground underline" onClick={onCancel}>
+            Cancel — don't publish
+          </button>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
 export function HomePage() {
   const list = useSchemasStore((s) => s.list)
   const loading = useSchemasStore((s) => s.loading)
@@ -24,39 +68,14 @@ export function HomePage() {
   const role = useAuthStore((s) => s.user?.role)
   const canAuthor = role === 'admin' || role === 'author'
   const [copied, setCopied] = useState('')
+  const [publishPrompt, setPublishPrompt] = useState<{ id: string; name: string } | null>(null)
 
   const allFolders = [...new Set(list.map((s) => s.folder).filter(Boolean))].sort()
   const allTags = [...new Set(list.flatMap((s) => s.tags))].sort()
 
-  // `already` must reflect current visibility, not just a non-empty slug —
-  // UnpublishSchema keeps the slug around (so republishing reuses the same
-  // link) but the template is private again, so a stale slug alone must not
-  // skip the publish call on the next "Publish" click.
-  async function share(id: string, already: boolean, slug?: string) {
-    let s = slug
-    if (!already) {
-      // asked once, at the moment a template first goes live — later changes
-      // of mind go through the "Who can access this link" control on the
-      // submissions page.
-      const restricted = confirm(
-        'Restrict this form to signed-in users only?\n\n' +
-          'OK — only people signed in to this app can view or fill it\n' +
-          'Cancel — anyone with the link (default)',
-      )
-      const rec = await publish(id)
-      s = rec.shareSlug
-      if (restricted) {
-        await api.post(`/schemas/${id}/ops`, {
-          submissionCap: rec.submissionCap,
-          brand: rec.brand ?? '',
-          retentionDays: rec.retentionDays ?? 0,
-          publicAccess: 'authenticated',
-        })
-        await refresh()
-      }
-    }
-    if (!s) return
-    const url = `${location.origin}/f/${s}`
+  async function copyLink(id: string, slug?: string) {
+    if (!slug) return
+    const url = `${location.origin}/f/${slug}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(id)
@@ -64,6 +83,35 @@ export function HomePage() {
     } catch {
       prompt('Share link:', url)
     }
+  }
+
+  // `already` must reflect current visibility, not just a non-empty slug —
+  // UnpublishSchema keeps the slug around (so republishing reuses the same
+  // link) but the template is private again, so a stale slug alone must not
+  // skip the publish step on the next "Publish" click.
+  async function share(id: string, already: boolean, slug?: string) {
+    if (already) {
+      await copyLink(id, slug)
+      return
+    }
+    setPublishPrompt({ id, name: list.find((s) => s.id === id)?.name ?? 'this form' })
+  }
+
+  async function confirmPublish(restricted: boolean) {
+    if (!publishPrompt) return
+    const { id } = publishPrompt
+    setPublishPrompt(null)
+    const rec = await publish(id)
+    if (restricted) {
+      await api.post(`/schemas/${id}/ops`, {
+        submissionCap: rec.submissionCap,
+        brand: rec.brand ?? '',
+        retentionDays: rec.retentionDays ?? 0,
+        publicAccess: 'authenticated',
+      })
+      await refresh()
+    }
+    await copyLink(id, rec.shareSlug)
   }
 
   useEffect(() => {
@@ -257,6 +305,14 @@ export function HomePage() {
           ))}
         </div>
       )}
+
+      {publishPrompt ? (
+        <PublishChoiceModal
+          name={publishPrompt.name}
+          onChoose={(restricted) => void confirmPublish(restricted)}
+          onCancel={() => setPublishPrompt(null)}
+        />
+      ) : null}
     </div>
   )
 }

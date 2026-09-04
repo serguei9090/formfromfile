@@ -23,6 +23,7 @@ test('republish after unpublish actually republishes, not a silent no-op', async
   const unpublishBtn = row.getByRole('button', { name: 'Unpublish' })
 
   await publishBtn.click()
+  await page.getByRole('button', { name: 'Anyone with the link' }).click()
   await expect(unpublishBtn).toBeVisible()
 
   let res = await page.request.get(`/api/schemas/${schema.id}`)
@@ -36,6 +37,7 @@ test('republish after unpublish actually republishes, not a silent no-op', async
 
   // click Publish again — this is exactly what used to no-op
   await publishBtn.click()
+  await page.getByRole('button', { name: 'Anyone with the link' }).click()
   await expect(unpublishBtn).toBeVisible()
 
   res = await page.request.get(`/api/schemas/${schema.id}`)
@@ -43,4 +45,30 @@ test('republish after unpublish actually republishes, not a silent no-op', async
   expect(body.visibility).toBe('shared')
   expect(body.status).toBe('published')
   expect(body.shareSlug).toBe(firstSlug) // same link is reused
+})
+
+// Regression: the first cut of this prompt used window.confirm(), where
+// dismissing the dialog (the natural "back out" gesture) silently fell
+// through to publishing as fully public instead of aborting. The in-app
+// modal's Cancel must make zero API calls.
+test('publish prompt: Cancel makes no API call at all', async ({ page }) => {
+  await loginAsAdmin(page)
+  const created = await page.request.post('/api/schemas', {
+    data: { name: 'E2E cancel publish', kind: 'json', body: SAMPLE_JSON, formJson: '{}' },
+  })
+  const { schema } = await created.json()
+
+  await page.goto('/')
+  const row = page.locator('.flex.items-center.gap-3.p-3', { hasText: 'E2E cancel publish' })
+  await row.getByRole('button', { name: 'Publish', exact: true }).click()
+
+  await expect(page.getByRole('dialog', { name: 'Who can access this link' })).toBeVisible()
+  await page.getByRole('button', { name: "Cancel — don't publish" }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  const detail = await page.request.get(`/api/schemas/${schema.id}`)
+  const body = (await detail.json()).schema
+  expect(body.visibility).toBe('private')
+  expect(body.shareSlug ?? null).toBeNull()
+  await expect(row.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
 })
