@@ -55,10 +55,10 @@ docker run -d --name fff \
 | `FFF_LOG_FORMAT` | text | `json` for structured lines (one per request: id, status, dur, ip). `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error`. |
 | `FFF_WEBHOOK_ALLOW_PRIVATE` | — | `true` lets webhook targets be LAN / loopback / http (internal deployments). Default blocks them (SSRF). |
 | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | Cloudflare Turnstile — see §CAPTCHA below. Both set → public-form CAPTCHA. |
+| `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response (see §security headers); `off` disables |
 | `FFF_ANTHROPIC_API_KEY` | — | AI beta key (see [`AI.md`](AI.md)) |
 | `FFF_AI_BETA` | — | `true` to actually turn AI on — **needs the key too** |
 | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
-| `FFF_SESSION_SECRET` | — | reserved; unused today (sessions are opaque DB tokens) |
 
 Set `FFF_ALLOW_REGISTER=false` once you have your admin — otherwise anyone who
 reaches the page can create an account.
@@ -84,6 +84,30 @@ time by adding/removing the two env vars — no rebuild.
 If you *do* front the whole app with Cloudflare (a proxied DNS record), you get
 its WAF + DDoS + bot-fight for free on top, and can use **Zero Trust → Access**
 for SSO — see §2b.
+
+---
+
+## Security headers
+
+The app sets these on **every** response (turn off with
+`FFF_SECURITY_HEADERS=off`):
+
+| header | value |
+|--------|-------|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `same-origin` |
+| `Permissions-Policy` | `geolocation=(), camera=(), microphone=(), payment=(), usb=()` |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Content-Security-Policy` | `default-src 'self'` + `frame-ancestors 'none'`, `object-src 'none'`, `img-src 'self' data:`, `style-src 'self' 'unsafe-inline'`. When Turnstile is configured, `https://challenges.cloudflare.com` is added to `script-src` / `frame-src` / `connect-src`. |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` — **only** when the request arrived over TLS (`r.TLS`, or `X-Forwarded-Proto: https` with `FFF_TRUST_PROXY=true`) |
+
+The `Caddyfile` in this repo also sets HSTS / `nosniff` / `Referrer-Policy` /
+`X-Frame-Options` — now redundant with the app's own, but harmless (last write
+wins, values match). The session cookie is `HttpOnly`, `SameSite=Lax`, and
+`Secure` whenever the request is HTTPS (same TLS detection as HSTS). Lax is
+deliberate — share links (`/f/:slug`) are top-level GETs that must work from an
+email; Lax still blocks the cookie on cross-site POSTs.
 
 ---
 

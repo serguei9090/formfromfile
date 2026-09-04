@@ -46,7 +46,7 @@ cd server && go build ./... && go vet ./... && go test ./...
 | — | `FFF_ANTHROPIC_API_KEY` | — | AI assist key (beta) |
 | — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/AI.md)) |
 | — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
-| `--session-secret` | `FFF_SESSION_SECRET` | — | *(reserved — sessions are opaque DB tokens, no signing yet)* |
+| — | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response; `off` to disable (debugging / odd proxy) |
 
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.

@@ -54,15 +54,16 @@ func main() {
 	aiSvc := ai.New()
 
 	h := httpapi.Router(httpapi.Options{
-		Store:               st,
-		Auth:                svc,
-		AI:                  aiSvc,
-		AllowRegister:       *allowRegister,
-		WebhookAllowPrivate: truthy(os.Getenv("FFF_WEBHOOK_ALLOW_PRIVATE")),
-		TrustProxy:          truthy(os.Getenv("FFF_TRUST_PROXY")),
-		TurnstileSiteKey:    os.Getenv("FFF_TURNSTILE_SITE_KEY"),
-		TurnstileSecret:     os.Getenv("FFF_TURNSTILE_SECRET"),
-		StaticFS:            staticFS,
+		Store:                  st,
+		Auth:                   svc,
+		AI:                     aiSvc,
+		AllowRegister:          *allowRegister,
+		WebhookAllowPrivate:    truthy(os.Getenv("FFF_WEBHOOK_ALLOW_PRIVATE")),
+		TrustProxy:             truthy(os.Getenv("FFF_TRUST_PROXY")),
+		TurnstileSiteKey:       os.Getenv("FFF_TURNSTILE_SITE_KEY"),
+		TurnstileSecret:        os.Getenv("FFF_TURNSTILE_SECRET"),
+		DisableSecurityHeaders: off(os.Getenv("FFF_SECURITY_HEADERS")),
+		StaticFS:               staticFS,
 	})
 
 	srv := &http.Server{
@@ -113,6 +114,16 @@ func envOr(key, def string) string {
 func truthy(v string) bool {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
+
+// off reports an explicit opt-out ("0"/"false"/"no"/"off"). Blank → not off,
+// so a setting defaults on.
+func off(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "0", "false", "no", "off":
 		return true
 	}
 	return false

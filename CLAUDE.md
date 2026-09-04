@@ -37,8 +37,8 @@ core in sync" below.
 - `modernc.org/sqlite` not `mattn/go-sqlite3`: pure Go → `CGO_ENABLED=0` →
   trivial cross-compile and a `scratch`/distroless Docker image.
 - Opaque session tokens stored as `sha256(token)` (no JWT, no cookie signing):
-  simplest thing that's revocable and leak-safe. `--session-secret` is reserved
-  but currently unused.
+  simplest thing that's revocable and leak-safe. Tokens are 256-bit random, so
+  there's nothing to sign — the old `--session-secret` idea was dropped.
 - The FormFlow parser was already framework-free in InfraKit by design, so it
   ports with zero changes and keeps its own test suite.
 

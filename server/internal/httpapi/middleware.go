@@ -30,7 +30,7 @@ func (h *handlers) requireAuth(next http.Handler) http.Handler {
 		}
 		u, err := h.opts.Auth.UserByToken(r.Context(), c.Value)
 		if err != nil {
-			clearSessionCookie(w, r)
+			h.clearSessionCookie(w, r)
 			writeErr(w, http.StatusUnauthorized, "session expired")
 			return
 		}
@@ -78,25 +78,29 @@ func (h *handlers) requireAuthor(next http.Handler) http.Handler {
 	})
 }
 
-func setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+// SameSite=Lax is deliberate: the app uses a single session cookie and the
+// share links (/f/:slug) are top-level GET navigations that must still work
+// from an email/Slack link. Lax already withholds the cookie from cross-site
+// POSTs, so it covers CSRF for the state-changing routes.
+func (h *handlers) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   requestIsHTTPS(r, h.opts.TrustProxy),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(auth.SessionTTL.Seconds()),
 	})
 }
 
-func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
+func (h *handlers) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   requestIsHTTPS(r, h.opts.TrustProxy),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

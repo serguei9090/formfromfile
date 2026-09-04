@@ -32,6 +32,9 @@ type Options struct {
 	// Both set → the public fill page shows a challenge and submits are checked.
 	TurnstileSiteKey string
 	TurnstileSecret  string
+	// DisableSecurityHeaders turns off the securityHeaders middleware
+	// (FFF_SECURITY_HEADERS=off). Default (zero value) keeps them on.
+	DisableSecurityHeaders bool
 	// StaticFS serves the built SPA (web/dist). Nil in dev — Vite proxies /api.
 	StaticFS fs.FS
 }
@@ -42,6 +45,9 @@ func Router(opts Options) http.Handler {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	if !opts.DisableSecurityHeaders {
+		r.Use(securityHeaders(opts))
+	}
 	if opts.TrustProxy {
 		r.Use(trustedProxyIP)
 	}

@@ -41,7 +41,7 @@ func (h *handlers) register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusCreated, map[string]any{"user": u})
 		return
 	}
-	setSessionCookie(w, r, token)
+	h.setSessionCookie(w, r, token)
 	writeJSON(w, http.StatusCreated, map[string]any{"user": u2})
 }
 
@@ -63,7 +63,7 @@ func (h *handlers) login(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, code, err.Error())
 		return
 	}
-	setSessionCookie(w, r, token)
+	h.setSessionCookie(w, r, token)
 	writeJSON(w, http.StatusOK, map[string]any{"user": u})
 }
 
@@ -71,7 +71,7 @@ func (h *handlers) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		h.opts.Auth.Logout(c.Value)
 	}
-	clearSessionCookie(w, r)
+	h.clearSessionCookie(w, r)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -83,7 +83,7 @@ func (h *handlers) me(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := h.opts.Auth.UserByToken(r.Context(), c.Value)
 	if err != nil {
-		clearSessionCookie(w, r)
+		h.clearSessionCookie(w, r)
 		writeJSON(w, http.StatusOK, map[string]any{"user": nil})
 		return
 	}

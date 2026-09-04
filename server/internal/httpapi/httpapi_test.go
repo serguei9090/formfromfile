@@ -416,3 +416,73 @@ func TestHealthAndConfig(t *testing.T) {
 		t.Fatalf("config: %v", out)
 	}
 }
+
+func TestSecurityHeaders(t *testing.T) {
+	e := newEnv(t)
+	res, _ := e.do(t, e.anon, "GET", "/healthz", nil)
+	if got := res.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("nosniff: %q", got)
+	}
+	if got := res.Header.Get("X-Frame-Options"); got != "DENY" {
+		t.Fatalf("frame-options: %q", got)
+	}
+	csp := res.Header.Get("Content-Security-Policy")
+	if !strings.Contains(csp, "default-src 'self'") || !strings.Contains(csp, "frame-ancestors 'none'") {
+		t.Fatalf("csp baseline missing: %q", csp)
+	}
+	if strings.Contains(csp, "challenges.cloudflare.com") {
+		t.Fatalf("csp should not allow turnstile host when unconfigured: %q", csp)
+	}
+	// httptest is plain HTTP → no HSTS
+	if got := res.Header.Get("Strict-Transport-Security"); got != "" {
+		t.Fatalf("HSTS on plain HTTP: %q", got)
+	}
+}
+
+func TestSecurityHeadersCSPWithTurnstile(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	srv := httptest.NewServer(Router(Options{
+		Store: st, Auth: auth.NewService(st), AllowRegister: true,
+		TurnstileSiteKey: "1x00000000000000000000AA", TurnstileSecret: "secret",
+	}))
+	t.Cleanup(srv.Close)
+
+	res, err := http.Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+	csp := res.Header.Get("Content-Security-Policy")
+	if !strings.Contains(csp, "script-src 'self' https://challenges.cloudflare.com") {
+		t.Fatalf("turnstile host not in script-src: %q", csp)
+	}
+	if !strings.Contains(csp, "frame-src https://challenges.cloudflare.com") {
+		t.Fatalf("turnstile host not in frame-src: %q", csp)
+	}
+}
+
+func TestSecurityHeadersDisabled(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	srv := httptest.NewServer(Router(Options{
+		Store: st, Auth: auth.NewService(st), AllowRegister: true,
+		DisableSecurityHeaders: true,
+	}))
+	t.Cleanup(srv.Close)
+
+	res, err := http.Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+	if got := res.Header.Get("Content-Security-Policy"); got != "" {
+		t.Fatalf("CSP set despite DisableSecurityHeaders: %q", got)
+	}
+}
