@@ -17,6 +17,7 @@ import (
 
 	"github.com/serguei9090/formfromfile/internal/ai"
 	"github.com/serguei9090/formfromfile/internal/auth"
+	"github.com/serguei9090/formfromfile/internal/firebaseauth"
 	"github.com/serguei9090/formfromfile/internal/httpapi"
 	"github.com/serguei9090/formfromfile/internal/metrics"
 	"github.com/serguei9090/formfromfile/internal/store"
@@ -57,6 +58,16 @@ func main() {
 	registerMetrics(st, *dbPath)
 	startRetentionSweep(st)
 
+	// Firebase sign-in (Google / Firebase email) is off unless a project id
+	// is set — no service account credentials needed, only the (public)
+	// project id; the ID token's signature is checked against Google's
+	// published keys.
+	var fbVerifier *firebaseauth.Verifier
+	fbProjectID := os.Getenv("FFF_FIREBASE_PROJECT_ID")
+	if fbProjectID != "" {
+		fbVerifier = firebaseauth.New(fbProjectID)
+	}
+
 	h := httpapi.Router(httpapi.Options{
 		Store:                  st,
 		Auth:                   svc,
@@ -69,6 +80,11 @@ func main() {
 		DisableSecurityHeaders: off(os.Getenv("FFF_SECURITY_HEADERS")),
 		MetricsToken:           os.Getenv("FFF_METRICS_TOKEN"),
 		ErrorWebhook:           os.Getenv("FFF_ERROR_WEBHOOK"),
+		Firebase:               fbVerifier,
+		FirebaseProjectID:      fbProjectID,
+		FirebaseAPIKey:         os.Getenv("FFF_FIREBASE_API_KEY"),
+		FirebaseAuthDomain:     os.Getenv("FFF_FIREBASE_AUTH_DOMAIN"),
+		FirebaseAppID:          os.Getenv("FFF_FIREBASE_APP_ID"),
 		StaticFS:               staticFS,
 	})
 
@@ -80,7 +96,8 @@ func main() {
 	n, _ := st.CountUsers()
 	slog.Info("listening",
 		"addr", *addr, "db", *dbPath, "users", n,
-		"register", *allowRegister, "spa", staticFS != nil, "ai", aiSvc.Enabled())
+		"register", *allowRegister, "spa", staticFS != nil, "ai", aiSvc.Enabled(),
+		"firebase", fbVerifier != nil)
 	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("server stopped", "err", err)
 		os.Exit(1)

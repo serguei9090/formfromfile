@@ -49,6 +49,8 @@ cd server && go build ./... && go vet ./... && go test ./...
 | — | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response; `off` to disable (debugging / odd proxy) |
 | — | `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus) behind `Authorization: Bearer <token>`; unset → no route |
 | — | `FFF_ERROR_WEBHOOK` | — | recovered panics POST a JSON report here (request id, path, error, stack) |
+| — | `FFF_FIREBASE_PROJECT_ID` | — | set → a "Continue with Google" button appears on `/login`; see [`docs/AUTH.md`](docs/AUTH.md) |
+| — | `FFF_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_APP_ID` | — | the rest of the Firebase Web SDK config (not secrets) — needed alongside `_PROJECT_ID` |
 
 Most of these (register, Turnstile keys, webhook-allow-private, AI beta,
 default submission cap) can also be changed at runtime from **Admin →
@@ -82,7 +84,8 @@ the phase log and [`docs/`](docs/) for the code walkthrough. AI-session
 guidance is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
 
 Working today: multi-user auth (register / login / logout, first user = admin,
-admin user list); the **template author** flow (detect XML / YAML / JSON / TOML
+admin user list, optional Firebase Google sign-in — see
+[`docs/AUTH.md`](docs/AUTH.md)); the **template author** flow (detect XML / YAML / JSON / TOML
 / INI / `.env` / CSV, or import a JSON Schema / XML Schema (`.xsd`) for
 declared-not-guessed validation → retype → per-field labels, help and
 validation presets → `%tokens%`); a **Generate .xsd** button when the

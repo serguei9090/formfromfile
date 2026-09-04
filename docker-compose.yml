@@ -25,6 +25,11 @@ services:
       # optional — AI beta (needs BOTH)
       FFF_ANTHROPIC_API_KEY: "${FFF_ANTHROPIC_API_KEY:-}"
       FFF_AI_BETA: "${FFF_AI_BETA:-}"
+      # optional — Google sign-in via Firebase (see docs/AUTH.md)
+      FFF_FIREBASE_PROJECT_ID: "${FFF_FIREBASE_PROJECT_ID:-}"
+      FFF_FIREBASE_API_KEY: "${FFF_FIREBASE_API_KEY:-}"
+      FFF_FIREBASE_AUTH_DOMAIN: "${FFF_FIREBASE_AUTH_DOMAIN:-}"
+      FFF_FIREBASE_APP_ID: "${FFF_FIREBASE_APP_ID:-}"
     volumes:
       - fff-data:/data
     # no host ports — only Caddy talks to the app, over the compose network

@@ -14,6 +14,7 @@ import (
 
 	"github.com/serguei9090/formfromfile/internal/ai"
 	"github.com/serguei9090/formfromfile/internal/auth"
+	"github.com/serguei9090/formfromfile/internal/firebaseauth"
 	"github.com/serguei9090/formfromfile/internal/store"
 )
 
@@ -43,6 +44,19 @@ type Options struct {
 	// ErrorWebhook, when set (FFF_ERROR_WEBHOOK), receives a JSON POST on every
 	// recovered panic (request id, path, error, stack).
 	ErrorWebhook string
+	// Firebase, when set, enables POST /api/auth/firebase (Google / Firebase
+	// email sign-in). Nil = the route 501s and /api/config omits "firebase".
+	Firebase *firebaseauth.Verifier
+	// FirebaseAPIKey / FirebaseAuthDomain / FirebaseAppID are the Firebase Web
+	// SDK's public client config, echoed via /api/config so the SPA can
+	// initialize firebase/auth without its own env plumbing. Not secrets —
+	// Firebase's own docs note these are safe to ship to the browser; server
+	// trust comes from Firebase.ProjectID verifying the token signature, not
+	// from these values.
+	FirebaseProjectID  string
+	FirebaseAPIKey     string
+	FirebaseAuthDomain string
+	FirebaseAppID      string
 	// StaticFS serves the built SPA (web/dist). Nil in dev — Vite proxies /api.
 	StaticFS fs.FS
 }
@@ -75,6 +89,7 @@ func Router(opts Options) http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", h.register)
 			r.Post("/login", h.login)
+			r.Post("/firebase", h.firebaseSignIn)
 			r.Post("/logout", h.logout)
 			r.Get("/me", h.me)
 		})

@@ -15,6 +15,7 @@ var (
 	ErrRegisterClosed     = errors.New("self-registration is disabled")
 	ErrLastAdmin          = errors.New("cannot disable the last admin")
 	ErrInvalidRole        = errors.New("invalid role")
+	ErrEmailNotVerified   = errors.New("that email address is not verified")
 )
 
 const MinPasswordLen = 10

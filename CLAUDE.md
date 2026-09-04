@@ -194,7 +194,7 @@ fork / approval queue; conditional/computed/cross-field/async validation
 `author` role + `requireAuthor`; submission comments; HMAC webhooks
 (`internal/webhook`) + delivery log; `submissions.zip`; audit log; per-form
 submission cap + branding + completion analytics; order-preserving XML render.
-Migrations run to **v7** (F29b v6, F29e v7). **Deferred:** F24 (HCL/systemd/… formats +
+Migrations run to **v8** (F29b v6, F29e v7, F31 v8). **Deferred:** F24 (HCL/systemd/… formats +
 full-fidelity + bulk CSV fill), email-on-submit, hCaptcha, i18n, PWA;
 **parked:** F27 integrations (GitHub PR, CLI, OIDC).
 
@@ -237,6 +237,27 @@ button (shown for XML templates) emits a best-effort schema from the detected
 sample (attributes → `xs:attribute`, arrays → `maxOccurs="unbounded"`); no
 formal schema yet, refine the generated one, re-import for tight validation.
 +10 tests incl. a generate→import round-trip.
+
+**F31 done** — Firebase Google sign-in, coexisting with password auth. See
+[`docs/AUTH.md`](docs/AUTH.md) for the full walkthrough. Backend:
+`internal/firebaseauth` verifies a Firebase ID token's RS256 signature
+against Google's public JWKS (cached, ~hourly refresh) — **no Firebase Admin
+SDK, no service-account key**, only `FFF_FIREBASE_PROJECT_ID` (checked as
+`aud`/`iss`); one small dep (`golang-jwt/jwt/v5`), not the heavy
+`cloud.google.com/go` tree. `auth.Service.LoginOrProvisionFirebase` —
+unknown email auto-provisions role `user`; existing email links by email
+(no dupe account); first account ever (either path) is admin; disabled
+blocks same as password login; `email_verified` required. `POST
+/api/auth/firebase`, rate-limited; `/api/config` echoes the Firebase Web SDK's
+public client config (`apiKey`/`authDomain`/`projectId`/`appId` — not
+secrets) when configured. Migration **v8**: `users.firebase_uid` (nullable
+unique). Frontend: `app/firebase.ts` dynamically imports `firebase/app` +
+`firebase/auth` only on click (code-split, not in the main bundle);
+`AuthCard` shows "Continue with Google" only when `/config` reports a
+Firebase config. Env-only for now (not yet in the F29b settings-panel layer).
++14 server tests (incl. tampered-signature / wrong-aud / wrong-iss / expired
+/ none-alg rejection) — manually verified in-browser (button absent without
+config, present + graceful-error with a fake project).
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

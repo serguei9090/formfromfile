@@ -58,6 +58,8 @@ docker run -d --name fff \
 | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response (see §security headers); `off` disables |
 | `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus text) behind `Authorization: Bearer <token>`; unset → route absent |
 | `FFF_ERROR_WEBHOOK` | — | recovered panics POST `{time,requestId,method,path,error,stack}` here — point it at Slack/Discord/an alert sink |
+| `FFF_FIREBASE_PROJECT_ID` | — | set → "Continue with Google" on `/login`; see [`AUTH.md`](AUTH.md) |
+| `FFF_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_APP_ID` | — | Firebase Web SDK config (public, not secrets) — needed alongside `_PROJECT_ID` |
 | `FFF_ANTHROPIC_API_KEY` | — | AI beta key (see [`AI.md`](AI.md)) |
 | `FFF_AI_BETA` | — | `true` to actually turn AI on — **needs the key too** |
 | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
@@ -101,6 +103,19 @@ for SSO — see §2b.
 
 ---
 
+## Google sign-in — Firebase
+
+Set `FFF_FIREBASE_PROJECT_ID` (+ `_API_KEY` / `_AUTH_DOMAIN` / `_APP_ID`) and a
+"Continue with Google" button appears on `/login`. Free, no service-account
+key needed — the server verifies tokens against Google's public keys, only
+the project id matters for trust. Unset (the default) → password-only, exactly
+today's behavior. First account either way (password or Google) becomes
+admin; unknown emails self-provision as `user`, existing emails link.
+Full walkthrough (Firebase console steps, authorized domains, account-linking
+behavior): [`AUTH.md`](AUTH.md).
+
+---
+
 ## Security headers
 
 The app sets these on **every** response (turn off with
@@ -112,8 +127,8 @@ The app sets these on **every** response (turn off with
 | `X-Frame-Options` | `DENY` |
 | `Referrer-Policy` | `same-origin` |
 | `Permissions-Policy` | `geolocation=(), camera=(), microphone=(), payment=(), usb=()` |
-| `Cross-Origin-Opener-Policy` | `same-origin` |
-| `Content-Security-Policy` | `default-src 'self'` + `frame-ancestors 'none'`, `object-src 'none'`, `img-src 'self' data:`, `style-src 'self' 'unsafe-inline'`. When Turnstile is configured, `https://challenges.cloudflare.com` is added to `script-src` / `frame-src` / `connect-src`. |
+| `Cross-Origin-Opener-Policy` | `same-origin` — relaxes to `same-origin-allow-popups` when Firebase sign-in is configured (`signInWithPopup` needs `window.opener`) |
+| `Content-Security-Policy` | `default-src 'self'` + `frame-ancestors 'none'`, `object-src 'none'`, `img-src 'self' data:`, `style-src 'self' 'unsafe-inline'`. Turnstile configured → `https://challenges.cloudflare.com` added to `script-src` / `frame-src` / `connect-src`. Firebase configured → `https://*.googleapis.com` / `https://securetoken.google.com` added to `connect-src`, your `authDomain` added to `frame-src`. |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` — **only** when the request arrived over TLS (`r.TLS`, or `X-Forwarded-Proto: https` with `FFF_TRUST_PROXY=true`) |
 
 The `Caddyfile` in this repo also sets HSTS / `nosniff` / `Referrer-Policy` /

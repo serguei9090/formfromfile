@@ -96,14 +96,78 @@ func (s *Service) Login(email, pw, throttleKey string) (token string, u User, er
 	}
 	s.thr.ok(throttleKey)
 
+	token, err = s.issueSession(u.ID)
+	if err != nil {
+		return "", User{}, err
+	}
+	return token, u, nil
+}
+
+// issueSession mints a new opaque session token for userID.
+func (s *Service) issueSession(userID string) (string, error) {
 	raw := make([]byte, 32)
 	_, _ = rand.Read(raw)
-	token = hex.EncodeToString(raw)
+	token := hex.EncodeToString(raw)
 	now := time.Now()
-	_, err = s.st.DB.Exec(
+	_, err := s.st.DB.Exec(
 		`INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?,?,?,?)`,
-		hashToken(token), u.ID, now.UnixMilli(), now.Add(SessionTTL).UnixMilli(),
+		hashToken(token), userID, now.UnixMilli(), now.Add(SessionTTL).UnixMilli(),
 	)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+// LoginOrProvisionFirebase signs in a user who authenticated with Firebase
+// (Google, or Firebase's own email sign-in). uid is Firebase's stable
+// per-account id; email must already be verified by the caller — Google
+// sign-ins always are, Firebase email/password sign-ins are not guaranteed to
+// be. The first account ever created (by any method) becomes admin, matching
+// Register's bootstrap rule. Existing accounts are looked up by email and
+// linked to uid; new ones are provisioned with no local password.
+func (s *Service) LoginOrProvisionFirebase(uid, email string) (token string, u User, err error) {
+	email = normEmail(email)
+	if email == "" {
+		return "", User{}, errors.New("firebase token had no email claim")
+	}
+	if uid == "" {
+		return "", User{}, errors.New("firebase token had no subject claim")
+	}
+
+	u, err = s.userByEmail(email)
+	if errors.Is(err, ErrNotFound) {
+		n, cerr := s.st.CountUsers()
+		if cerr != nil {
+			return "", User{}, cerr
+		}
+		role := RoleUser
+		if n == 0 {
+			role = RoleAdmin
+		}
+		u = User{ID: newID(), Email: email, Role: role, CreatedAt: time.Now().UnixMilli()}
+		_, err = s.st.DB.Exec(
+			`INSERT INTO users (id, email, pw_hash, role, disabled, firebase_uid, created_at) VALUES (?,?,?,?,0,?,?)`,
+			u.ID, u.Email, "", string(u.Role), uid, u.CreatedAt,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "UNIQUE") {
+				return "", User{}, ErrTaken
+			}
+			return "", User{}, err
+		}
+	} else if err != nil {
+		return "", User{}, err
+	} else {
+		if u.Disabled {
+			return "", User{}, ErrDisabled
+		}
+		if _, err = s.st.DB.Exec(`UPDATE users SET firebase_uid = ? WHERE id = ?`, uid, u.ID); err != nil {
+			return "", User{}, err
+		}
+	}
+
+	token, err = s.issueSession(u.ID)
 	if err != nil {
 		return "", User{}, err
 	}

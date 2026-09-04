@@ -158,6 +158,13 @@ var migrations = []string{
 	   created_at INTEGER NOT NULL
 	 );
 	 CREATE INDEX ix_dol_time ON data_ops_log(created_at DESC);`,
+
+	// v8 — Firebase sign-in (F31): a Firebase-provisioned account has no local
+	// password (pw_hash stays '') and is linked by its stable Firebase uid.
+	// NULL (not '') when unset so the unique index allows any number of
+	// password-only accounts.
+	`ALTER TABLE users ADD COLUMN firebase_uid TEXT;
+	 CREATE UNIQUE INDEX ix_users_firebase_uid ON users(firebase_uid) WHERE firebase_uid IS NOT NULL;`,
 }
 
 func migrate(db *sql.DB) error {

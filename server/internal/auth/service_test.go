@@ -118,3 +118,65 @@ func TestResetPassword(t *testing.T) {
 		t.Errorf("login with new pw: %v", err)
 	}
 }
+
+func TestLoginOrProvisionFirebaseFirstUserIsAdmin(t *testing.T) {
+	s := newTestService(t)
+	tok, u, err := s.LoginOrProvisionFirebase("fb-uid-1", "Owner@Example.com")
+	if err != nil {
+		t.Fatalf("provision: %v", err)
+	}
+	if u.Role != RoleAdmin || u.Email != "owner@example.com" {
+		t.Fatalf("first firebase user: role=%q email=%q", u.Role, u.Email)
+	}
+	if tok == "" {
+		t.Fatal("expected a session token")
+	}
+	if _, err := s.UserByToken(context.Background(), tok); err != nil {
+		t.Fatalf("session should be valid: %v", err)
+	}
+
+	_, u2, err := s.LoginOrProvisionFirebase("fb-uid-2", "second@example.com")
+	if err != nil {
+		t.Fatalf("provision 2: %v", err)
+	}
+	if u2.Role != RoleUser {
+		t.Fatalf("second firebase user role = %q, want user", u2.Role)
+	}
+}
+
+func TestLoginOrProvisionFirebaseLinksExistingAccount(t *testing.T) {
+	s := newTestService(t)
+	pw, err := s.Register("shared@example.com", "correcthorse1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, u, err := s.LoginOrProvisionFirebase("fb-uid-9", "shared@example.com")
+	if err != nil {
+		t.Fatalf("provision: %v", err)
+	}
+	if u.ID != pw.ID {
+		t.Fatalf("firebase sign-in created a second account instead of linking: %s != %s", u.ID, pw.ID)
+	}
+
+	var count int
+	if err := s.st.DB.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly 1 user row, got %d", count)
+	}
+}
+
+func TestLoginOrProvisionFirebaseDisabledAccount(t *testing.T) {
+	s := newTestService(t)
+	if _, err := s.Register("a@e.com", "correcthorse1"); err != nil {
+		t.Fatal(err)
+	}
+	u, _ := s.Register("u@e.com", "correcthorse2")
+	if err := s.SetDisabled(u.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.LoginOrProvisionFirebase("fb-uid-x", "u@e.com"); err != ErrDisabled {
+		t.Fatalf("disabled account via firebase: %v, want ErrDisabled", err)
+	}
+}

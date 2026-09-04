@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { api, ApiError } from '@/api/client'
-import type { User } from '@/api/types'
+import type { FirebaseWebConfig, User } from '@/api/types'
 
 interface AuthState {
   user: User | null
@@ -8,11 +8,14 @@ interface AuthState {
   allowRegister: boolean
   /** true when AI-assist endpoints are configured (FFF_ANTHROPIC_API_KEY set). */
   aiEnabled: boolean
+  /** non-null when Firebase sign-in (Google) is configured server-side. */
+  firebaseConfig: FirebaseWebConfig | null
   /** true when the last refresh failed for a non-auth reason (backend down). */
   offline: boolean
   refresh: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  loginWithFirebaseIdToken: (idToken: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -21,15 +24,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
   allowRegister: true,
   aiEnabled: false,
+  firebaseConfig: null,
   offline: false,
 
   refresh: async () => {
     try {
       const [me, cfg] = await Promise.all([
         api.get<{ user: User | null }>('/auth/me'),
-        api.get<{ allowRegister: boolean }>('/config'),
+        api.get<{ allowRegister: boolean; firebase?: FirebaseWebConfig }>('/config'),
       ])
-      set({ user: me.user, allowRegister: cfg.allowRegister, loading: false, offline: false })
+      set({
+        user: me.user,
+        allowRegister: cfg.allowRegister,
+        firebaseConfig: cfg.firebase ?? null,
+        loading: false,
+        offline: false,
+      })
       if (me.user) {
         api
           .get<{ enabled: boolean }>('/ai/status')
@@ -50,6 +60,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   register: async (email, password) => {
     const { user } = await api.post<{ user: User }>('/auth/register', { email, password })
+    set({ user })
+  },
+
+  loginWithFirebaseIdToken: async (idToken) => {
+    const { user } = await api.post<{ user: User }>('/auth/firebase', { idToken })
     set({ user })
   },
 

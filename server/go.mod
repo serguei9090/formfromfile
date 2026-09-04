@@ -3,13 +3,14 @@ module github.com/serguei9090/formfromfile
 go 1.26.4
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.69.0
 	github.com/go-chi/chi/v5 v5.3.2
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	golang.org/x/crypto v0.56.0
 	modernc.org/sqlite v1.58.0
 )
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.69.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

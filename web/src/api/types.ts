@@ -8,6 +8,15 @@ export interface User {
   createdAt: number
 }
 
+/** Firebase Web SDK config, echoed by GET /config when Firebase sign-in is
+ *  enabled server-side (FFF_FIREBASE_PROJECT_ID set). Not secret. */
+export interface FirebaseWebConfig {
+  apiKey: string
+  authDomain: string
+  projectId: string
+  appId: string
+}
+
 export type SchemaKind = 'xml' | 'yaml' | 'json' | 'toml' | 'ini' | 'csv' | 'dotenv'
 
 export type Visibility = 'private' | 'shared'

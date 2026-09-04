@@ -12,10 +12,19 @@ import (
 // restart.
 func (h *handlers) getConfig(w http.ResponseWriter, _ *http.Request) {
 	c := h.cfg()
-	writeJSON(w, http.StatusOK, map[string]any{
+	body := map[string]any{
 		"allowRegister":    c.AllowRegister,
 		"turnstileSiteKey": c.TurnstileSiteKey,
-	})
+	}
+	if h.opts.Firebase != nil {
+		body["firebase"] = map[string]string{
+			"apiKey":     h.opts.FirebaseAPIKey,
+			"authDomain": h.opts.FirebaseAuthDomain,
+			"projectId":  h.opts.FirebaseProjectID,
+			"appId":      h.opts.FirebaseAppID,
+		}
+	}
+	writeJSON(w, http.StatusOK, body)
 }
 
 // settingsView is the admin payload: the raw overrides, the resolved values,

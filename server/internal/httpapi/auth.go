@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/serguei9090/formfromfile/internal/auth"
 )
@@ -88,6 +89,52 @@ func (h *handlers) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"user": u})
+}
+
+type firebaseSignInBody struct {
+	IDToken string `json:"idToken"`
+}
+
+// firebaseLimiter caps how often one IP can hit the verify+provision path —
+// Firebase already checked the credential, this just bounds the DB writes.
+var firebaseLimiter = &fixedWindow{hits: map[string][]int64{}, limit: 30, window: time.Minute}
+
+func (h *handlers) firebaseSignIn(w http.ResponseWriter, r *http.Request) {
+	if !firebaseLimiter.allow(clientIP(r)) {
+		writeErr(w, http.StatusTooManyRequests, "too many attempts, try again shortly")
+		return
+	}
+	if h.opts.Firebase == nil {
+		writeErr(w, http.StatusNotImplemented, "Firebase sign-in is not configured")
+		return
+	}
+	var b firebaseSignInBody
+	if err := decode(w, r, &b); err != nil || b.IDToken == "" {
+		writeErr(w, http.StatusBadRequest, "bad request body")
+		return
+	}
+	claims, err := h.opts.Firebase.VerifyIDToken(r.Context(), b.IDToken)
+	if err != nil {
+		writeErr(w, http.StatusUnauthorized, "invalid sign-in token")
+		return
+	}
+	if !claims.EmailVerified {
+		writeErr(w, http.StatusForbidden, auth.ErrEmailNotVerified.Error())
+		return
+	}
+
+	token, u, err := h.opts.Auth.LoginOrProvisionFirebase(claims.UID, claims.Email)
+	switch {
+	case err == nil:
+		h.setSessionCookie(w, r, token)
+		writeJSON(w, http.StatusOK, map[string]any{"user": u})
+	case errors.Is(err, auth.ErrDisabled):
+		writeErr(w, http.StatusForbidden, err.Error())
+	case errors.Is(err, auth.ErrTaken):
+		writeErr(w, http.StatusConflict, err.Error())
+	default:
+		writeErr(w, http.StatusInternalServerError, err.Error())
+	}
 }
 
 func throttleKey(r *http.Request, email string) string {
