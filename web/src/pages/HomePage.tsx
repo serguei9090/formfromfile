@@ -27,8 +27,12 @@ export function HomePage() {
   const allFolders = [...new Set(list.map((s) => s.folder).filter(Boolean))].sort()
   const allTags = [...new Set(list.flatMap((s) => s.tags))].sort()
 
-  async function share(id: string, slug?: string) {
-    const s = slug ?? (await publish(id)).shareSlug
+  // `already` must reflect current visibility, not just a non-empty slug —
+  // UnpublishSchema keeps the slug around (so republishing reuses the same
+  // link) but the template is private again, so a stale slug alone must not
+  // skip the publish call on the next "Publish" click.
+  async function share(id: string, already: boolean, slug?: string) {
+    const s = already ? slug : (await publish(id)).shareSlug
     if (!s) return
     const url = `${location.origin}/f/${s}`
     try {
@@ -174,7 +178,7 @@ export function HomePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void share(s.id, s.shareSlug)}
+                onClick={() => void share(s.id, s.visibility === 'shared', s.shareSlug)}
                 title={s.visibility === 'shared' ? 'Copy share link' : 'Publish + copy link'}
               >
                 {copied === s.id ? <Check className="size-4" /> : <Link2 className="size-4" />}
