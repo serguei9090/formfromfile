@@ -149,6 +149,15 @@ from `core/**` internals, no React.
   JSON Schema builds the form directly, mapping `type` / `required` / `enum` /
   `pattern` / `minimum·maximum` / `title` / `description` straight onto
   `SchemaField` + `FieldMeta` (no content inference — review finding #8).
+- `importers/xsdSchema.ts` — `looksLikeXsdSchema` + `importXsdSchema`: same
+  trick for an XML Schema (`.xsd`) — `minOccurs`/`maxOccurs` → required/array,
+  named or inline `xs:simpleType` restrictions → `enumeration`/`pattern`/
+  `minInclusive`·`maxInclusive`. Namespace prefixes on tags are stripped
+  (`xs:element` / `xsd:element` / unprefixed both read the same).
+- `exporters/xsdGenerate.ts` — the reverse: `generateXsd(schema)` emits a
+  best-effort `.xsd` from a detected sample (one instance, so everything comes
+  out optional; attributes → `xs:attribute`, arrays → `maxOccurs="unbounded"`).
+  Wired to a "Generate .xsd" button in `DesignerPage` for XML templates.
 
 `DesignerPage` uses `parseRichXml` / `renderRichXml` for XML, threads
 `meta` + `tokens` + `tokenValues` through load / detect / retype / save,

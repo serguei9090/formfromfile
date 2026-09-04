@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Copy, Download, FileSearch, Save, Upload } from 'lucide-react'
+import { Copy, Download, FileDown, FileSearch, Save, Upload } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,6 +32,8 @@ import {
   renderTemplate,
 } from '@/formflow_ext/formats'
 import { importJsonSchema, looksLikeJsonSchema } from '@/formflow_ext/importers/jsonSchema'
+import { importXsdSchema, looksLikeXsdSchema } from '@/formflow_ext/importers/xsdSchema'
+import { generateXsd } from '@/formflow_ext/exporters/xsdGenerate'
 import { valuesFromFilledFile } from '@/formflow_ext/reverseFill'
 import { sampleById } from '@/data/samples'
 import { useSchemasStore } from '@/stores/schemasStore'
@@ -152,6 +154,14 @@ export function DesignerPage() {
         nextMeta = imported.meta
         seed = defaultValuesFromFields(detected.fields)
         setFormatId('json')
+      } else if (looksLikeXsdSchema(text)) {
+        const imported = importXsdSchema(text)
+        detected = imported.schema
+        nextMeta = imported.meta
+        seed = defaultValuesFromFields(detected.fields)
+        setFormatId('xml')
+        // the .xsd itself isn't valid target XML — start export from a clean slate
+        setSource('')
       } else {
         const p = parseSource(text)
         detected = p.schema
@@ -253,6 +263,16 @@ export function DesignerPage() {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = `${(name || 'form').replace(/\s+/g, '-')}.${extensionFor(formatId)}`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  function downloadXsd() {
+    if (!schema) return
+    const blob = new Blob([generateXsd(schema)], { type: 'application/xml' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${(name || 'schema').replace(/\s+/g, '-')}.xsd`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -485,6 +505,11 @@ export function DesignerPage() {
                   />
                   Keep comments in their exact position (slower, rebuilds repeated blocks)
                 </label>
+              ) : null}
+              {formatId === 'xml' ? (
+                <Button variant="ghost" size="sm" className="mt-2" onClick={downloadXsd}>
+                  <FileDown className="size-4" /> Generate .xsd from this schema
+                </Button>
               ) : null}
               {id ? (
                 <div className="mt-3">

@@ -227,11 +227,22 @@ POSTs `FFF_ERROR_WEBHOOK`; CI gains `govulncheck` + Trivy (non-blocking).
 `synchronous=NORMAL` + `busy_timeout` (F29f); [`docs/SCALE.md`](docs/SCALE.md).
 Deferred: AI $ budget (needs SDK token accounting).
 
+**F30 done** — XSD import: `formflow_ext/importers/xsdSchema.ts` builds a
+form directly from a `.xsd` (declared types, `minOccurs`/`maxOccurs` →
+required/array, named/inline `xs:simpleType` restrictions → enum/pattern/
+min/max), the same declared-not-guessed trick `jsonSchema.ts` does for JSON
+Schema. Detect a `.xsd` in the designer the same way as a JSON Schema.
+`formflow_ext/exporters/xsdGenerate.ts` — reverse direction: **Generate .xsd**
+button (shown for XML templates) emits a best-effort schema from the detected
+sample (attributes → `xs:attribute`, arrays → `maxOccurs="unbounded"`); no
+formal schema yet, refine the generated one, re-import for tight validation.
++10 tests incl. a generate→import round-trip.
+
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +
 `.dockerignore`. Release build copies `web/dist` into
 `server/cmd/formfromfile/dist/` so `//go:embed all:dist` bundles the real SPA
-(`main.go` serves it when `dist/index.html` exists). Still open: XSD import,
+(`main.go` serves it when `dist/index.html` exists). Still open:
 `v0.1.0` push/publish.
 
 **Deferred / ideas** (`PLAN.md` "Open items"): schema version history + diff,

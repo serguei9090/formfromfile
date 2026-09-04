@@ -26,6 +26,7 @@ export type FormatId = 'xml' | 'yaml' | 'json' | 'toml' | 'ini' | 'csv' | 'doten
 
 export const FORMAT_ACCEPT = [
   '.xml',
+  '.xsd',
   '.yaml',
   '.yml',
   '.json',

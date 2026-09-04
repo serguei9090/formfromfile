@@ -83,10 +83,13 @@ guidance is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
 
 Working today: multi-user auth (register / login / logout, first user = admin,
 admin user list); the **template author** flow (detect XML / YAML / JSON / TOML
-/ INI / `.env` / CSV or import a JSON Schema → retype → per-field labels, help
-and validation presets → `%tokens%`); the **filler** flow (validated
-fill-only form at `/fill/:id`, export in the original format); and **sharing**
-(publish → `/f/:slug` public link → submissions collected server-side).
+/ INI / `.env` / CSV, or import a JSON Schema / XML Schema (`.xsd`) for
+declared-not-guessed validation → retype → per-field labels, help and
+validation presets → `%tokens%`); a **Generate .xsd** button when the
+detected format is XML (no formal schema yet? get a starting one from a
+sample, refine it, re-import); the **filler** flow (validated fill-only form
+at `/fill/:id`, export in the original format); and **sharing** (publish →
+`/f/:slug` public link → submissions collected server-side).
 
 ## Layout
 
