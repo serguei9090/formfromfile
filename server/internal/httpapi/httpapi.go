@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -46,7 +48,7 @@ func Router(opts Options) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	if !opts.DisableSecurityHeaders {
-		r.Use(securityHeaders(opts))
+		r.Use(h.securityHeaders)
 	}
 	if opts.TrustProxy {
 		r.Use(trustedProxyIP)
@@ -59,12 +61,7 @@ func Router(opts Options) http.Handler {
 	})
 
 	r.Route("/api", func(r chi.Router) {
-		r.Get("/config", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusOK, map[string]any{
-				"allowRegister":    opts.AllowRegister,
-				"turnstileSiteKey": opts.TurnstileSiteKey,
-			})
-		})
+		r.Get("/config", h.getConfig)
 
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", h.register)
@@ -124,6 +121,8 @@ func Router(opts Options) http.Handler {
 			r.Post("/admin/users/{id}/reset", h.resetUserPassword)
 			r.Post("/admin/users/{id}/role", h.setUserRole)
 			r.Get("/admin/audit", h.adminAudit)
+			r.Get("/admin/settings", h.getSettings)
+			r.Put("/admin/settings", h.putSettings)
 		})
 
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
@@ -137,7 +136,13 @@ func Router(opts Options) http.Handler {
 	return r
 }
 
-type handlers struct{ opts Options }
+type handlers struct {
+	opts Options
+
+	cfgMu  sync.Mutex
+	cfgVal effConfig
+	cfgAt  time.Time
+}
 
 // spaHandler serves static files and falls back to index.html for client routes.
 func spaHandler(fsys fs.FS) http.Handler {

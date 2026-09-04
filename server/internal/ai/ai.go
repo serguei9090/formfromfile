@@ -24,6 +24,11 @@ var ErrDisabled = errors.New("ai features are not configured")
 // in tests).
 type Service interface {
 	Enabled() bool
+	// HasKey reports whether an API key is configured — i.e. whether the beta
+	// can be toggled on at all (via FFF_AI_BETA or the admin settings panel).
+	HasKey() bool
+	// SetEnabled flips the beta at runtime. It has no effect without a key.
+	SetEnabled(on bool)
 	SuggestMeta(ctx context.Context, schemaJSON, sampleValuesJSON string) (json.RawMessage, error)
 	ExplainDiff(ctx context.Context, format, before, after string) (string, error)
 	SchemaFromPrompt(ctx context.Context, description, format string) (body, kind string, err error)
@@ -31,9 +36,10 @@ type Service interface {
 }
 
 type client struct {
-	api   anthropic.Client
-	model anthropic.Model
-	on    bool
+	api    anthropic.Client
+	model  anthropic.Model
+	hasKey bool
+	on     bool
 }
 
 // New builds the AI service. It is a **beta feature, off by default** — it
@@ -44,7 +50,7 @@ type client struct {
 // `FFF_AI_MODEL` overrides the default model (`claude-sonnet-5`).
 func New() Service {
 	key := os.Getenv("FFF_ANTHROPIC_API_KEY")
-	if key == "" || !truthy(os.Getenv("FFF_AI_BETA")) {
+	if key == "" {
 		return &client{}
 	}
 	model := anthropic.Model(os.Getenv("FFF_AI_MODEL"))
@@ -52,9 +58,10 @@ func New() Service {
 		model = anthropic.ModelClaudeSonnet5
 	}
 	return &client{
-		api:   anthropic.NewClient(option.WithAPIKey(key)),
-		model: model,
-		on:    true,
+		api:    anthropic.NewClient(option.WithAPIKey(key)),
+		model:  model,
+		hasKey: true,
+		on:     truthy(os.Getenv("FFF_AI_BETA")),
 	}
 }
 
@@ -67,6 +74,10 @@ func truthy(v string) bool {
 }
 
 func (c *client) Enabled() bool { return c.on }
+func (c *client) HasKey() bool  { return c.hasKey }
+func (c *client) SetEnabled(on bool) {
+	c.on = on && c.hasKey
+}
 
 // ask sends one user message and returns the assistant's text.
 func (c *client) ask(ctx context.Context, system, user string, maxTokens int64) (string, error) {

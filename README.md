@@ -48,6 +48,10 @@ cd server && go build ./... && go vet ./... && go test ./...
 | — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
 | — | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response; `off` to disable (debugging / odd proxy) |
 
+Most of these (register, Turnstile keys, webhook-allow-private, AI beta,
+default submission cap) can also be changed at runtime from **Admin →
+Settings** with no restart — a stored value overrides the startup env/flag.
+
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.
 Deploying for a team? → [`docs/DEPLOY.md`](docs/DEPLOY.md). Fastest path:

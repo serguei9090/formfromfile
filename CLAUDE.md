@@ -194,7 +194,7 @@ fork / approval queue; conditional/computed/cross-field/async validation
 `author` role + `requireAuthor`; submission comments; HMAC webhooks
 (`internal/webhook`) + delivery log; `submissions.zip`; audit log; per-form
 submission cap + branding + completion analytics; order-preserving XML render.
-Migrations run to **v5**. **Deferred:** F24 (HCL/systemd/… formats +
+Migrations run to **v5** (F29b → **v6**). **Deferred:** F24 (HCL/systemd/… formats +
 full-fidelity + bulk CSV fill), email-on-submit, hCaptcha, i18n, PWA;
 **parked:** F27 integrations (GitHub PR, CLI, OIDC).
 
@@ -206,10 +206,16 @@ request IDs); frontend error boundary + toast surface; AI now needs
 e2e (`web/e2e/`, `bun run e2e`, CI job); `docker-compose.yml` + `Caddyfile`
 (auto-TLS) for one-command internal deploy; `docs/DEPLOY.md`.
 
-**Next (not started):** [`PLAN-F29.md`](PLAN-F29.md) — security headers/CSP,
-runtime **admin settings panel** (toggle Turnstile / register / webhook-private
-/ AI beta with no restart, `settings` table → v6), `/metrics` + error capture +
-`govulncheck`/Trivy, rate-limit depth, data retention + GDPR export/delete
+**F29a+b done** — app-level security headers + CSP
+(`httpapi/securityheaders.go`, `FFF_SECURITY_HEADERS=off`); runtime **admin
+settings** (`settings` table → **v6**, `httpapi/config.go` `h.cfg()` merges DB
+row › startup value, 5s cache): `GET`/`PUT /api/admin/settings`, an
+`AdminSettings` panel in `/admin` toggles register / Turnstile keys /
+webhook-allow-private / AI beta / default submission cap with **no restart**.
+`--session-secret` dropped.
+
+**Next (F29c–F29e):** [`PLAN-F29.md`](PLAN-F29.md) — `/metrics` + error capture
++ `govulncheck`/Trivy, rate-limit depth, data retention + GDPR export/delete
 (v7). Everything ships dormant (default = today's behaviour).
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +

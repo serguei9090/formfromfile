@@ -13,13 +13,13 @@ import (
 var aiLimiter = &fixedWindow{hits: map[string][]int64{}, limit: 30, window: time.Hour}
 
 func (h *handlers) aiStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"enabled": h.opts.AI != nil && h.opts.AI.Enabled()})
+	writeJSON(w, http.StatusOK, map[string]any{"enabled": h.aiEnabled()})
 }
 
 // aiGate returns false (and writes the response) when AI is unavailable or the
 // caller is over their hourly quota.
 func (h *handlers) aiGate(w http.ResponseWriter, r *http.Request) bool {
-	if h.opts.AI == nil || !h.opts.AI.Enabled() {
+	if !h.aiEnabled() {
 		writeErr(w, http.StatusNotImplemented, "AI features are not configured")
 		return false
 	}

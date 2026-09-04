@@ -44,6 +44,28 @@ investigation, do it whenever.
 
 ---
 
+## Progress
+
+- **F29a done** — `httpapi/securityheaders.go`: `nosniff`, `X-Frame-Options
+  DENY`, `Referrer-Policy same-origin`, `Permissions-Policy`, COOP, CSP
+  (`default-src 'self'` + Turnstile host only when configured), HSTS on TLS
+  only. `FFF_SECURITY_HEADERS=off` / `Options.DisableSecurityHeaders`. Cookie
+  `Secure` uses shared `requestIsHTTPS` (proxy-aware). `--session-secret`
+  dropped from docs. +3 tests.
+- **F29b done** — `settings` table (migration v6) + `store/settings.go`.
+  `httpapi/config.go` `effConfig` / `h.cfg()` merges DB row › Router value,
+  5s cache + `invalidateCfg()` on write, keeps `ai.Service` enabled-flag in
+  sync. `GET`/`PUT /api/admin/settings` (admin, audited, secret masked).
+  Keys: `allow_register`, `turnstile_site_key`/`_secret`,
+  `webhook_allow_private`, `ai_beta` (needs the key too), `submission_cap_default`.
+  `/api/config`, register gate, Turnstile verify, webhook allow-list,
+  submission cap + CSP all read `h.cfg()` → live toggles, no restart. AI
+  service split: `New()` builds the client whenever the key is present,
+  `SetEnabled`/`HasKey` added. UI: `AdminSettings` component folded into
+  `/admin` (source badges, reset per key). +2 server tests, +1 e2e.
+
+---
+
 ## F29a — security headers + CSP  ·  S
 
 The `Caddyfile` already sets HSTS / `nosniff` / `Referrer-Policy` /

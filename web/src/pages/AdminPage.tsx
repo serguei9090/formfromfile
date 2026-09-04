@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/authStore'
+import { AdminSettings } from './AdminSettings'
 
 const ROLES: Role[] = ['admin', 'author', 'user']
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -89,6 +90,11 @@ export function AdminPage() {
           ))}
         </div>
       )}
+
+      <section className="space-y-3 border-t border-border/60 pt-5">
+        <h2 className="text-lg font-semibold tracking-tight">Settings</h2>
+        <AdminSettings />
+      </section>
 
       {audit.length > 0 ? (
         <details className="text-xs">

@@ -134,6 +134,16 @@ var migrations = []string{
 	 ALTER TABLE schemas ADD COLUMN submission_cap INTEGER NOT NULL DEFAULT 0;
 	 ALTER TABLE schemas ADD COLUMN brand TEXT NOT NULL DEFAULT '';
 	 ALTER TABLE schemas ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0;`,
+
+	// v6 — runtime settings (F29b): a key/value store an admin edits from
+	// /admin/settings. A row here overrides the matching env var / built-in
+	// default; an empty table means behaviour is exactly as before.
+	`CREATE TABLE settings (
+	   key        TEXT PRIMARY KEY,
+	   value      TEXT NOT NULL,
+	   updated_at INTEGER NOT NULL,
+	   updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
+	 );`,
 }
 
 func migrate(db *sql.DB) error {

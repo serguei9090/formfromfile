@@ -122,7 +122,7 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 		writeErr(w, http.StatusBadRequest, "bad request body")
 		return
 	}
-	if h.opts.TurnstileSecret != "" && !verifyTurnstile(r.Context(), h.opts.TurnstileSecret, b.Turnstile, clientIP(r)) {
+	if secret := h.cfg().TurnstileSecret; secret != "" && !verifyTurnstile(r.Context(), secret, b.Turnstile, clientIP(r)) {
 		writeErr(w, http.StatusForbidden, "captcha check failed — please retry")
 		return
 	}
@@ -134,7 +134,12 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 		b.Submitter = b.Submitter[:200]
 	}
 
-	if sc.SubmissionCap > 0 && h.opts.Store.SubmissionCount(sc.ID) >= sc.SubmissionCap {
+	// a per-template cap wins; otherwise fall back to the org-wide default
+	limit := sc.SubmissionCap
+	if limit == 0 {
+		limit = h.cfg().SubmissionCapDefault
+	}
+	if limit > 0 && h.opts.Store.SubmissionCount(sc.ID) >= limit {
 		writeErr(w, http.StatusForbidden, "this form is no longer accepting submissions")
 		return
 	}

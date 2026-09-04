@@ -465,6 +465,68 @@ func TestSecurityHeadersCSPWithTurnstile(t *testing.T) {
 	}
 }
 
+func TestRuntimeSettings(t *testing.T) {
+	e := newEnv(t)
+	admin := e.authed(t) // first user
+
+	// a second account so register-closed actually bites (bootstrap exemption)
+	if res, out := e.do(t, e.anon, "POST", "/api/auth/register",
+		map[string]string{"email": "u2@example.com", "password": "correct-horse-2"}); res.StatusCode != http.StatusCreated {
+		t.Fatalf("second register: %d %v", res.StatusCode, out)
+	}
+
+	// non-admin cannot touch settings
+	fjar, _ := cookiejar.New(nil)
+	filler := &http.Client{Jar: fjar}
+	e.do(t, filler, "POST", "/api/auth/register",
+		map[string]string{"email": "filler@example.com", "password": "correct-horse-3"})
+	if res, _ := e.do(t, filler, "PUT", "/api/admin/settings",
+		map[string]any{setAllowRegister: "false"}); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("filler PUT settings: want 403, got %d", res.StatusCode)
+	}
+
+	// admin turns registration off
+	if res, _ := e.do(t, admin, "PUT", "/api/admin/settings",
+		map[string]any{setAllowRegister: "false"}); res.StatusCode != http.StatusOK {
+		t.Fatalf("admin PUT settings: %d", res.StatusCode)
+	}
+	// cache TTL is 5s — invalidateCfg should make this immediate
+	if res, out := e.do(t, e.anon, "POST", "/api/auth/register",
+		map[string]string{"email": "u3@example.com", "password": "correct-horse-4"}); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("register after disable: want 403, got %d %v", res.StatusCode, out)
+	}
+
+	_, cfg := e.do(t, e.anon, "GET", "/api/config", nil)
+	if cfg["allowRegister"] != false {
+		t.Fatalf("/config allowRegister: %v", cfg["allowRegister"])
+	}
+	_, view := e.do(t, admin, "GET", "/api/admin/settings", nil)
+	if src, _ := view["sources"].(map[string]any); src[setAllowRegister] != "override" {
+		t.Fatalf("sources: %v", view["sources"])
+	}
+
+	// reset → registration works again
+	e.do(t, admin, "PUT", "/api/admin/settings", map[string]any{setAllowRegister: nil})
+	if res, _ := e.do(t, e.anon, "POST", "/api/auth/register",
+		map[string]string{"email": "u4@example.com", "password": "correct-horse-5"}); res.StatusCode != http.StatusCreated {
+		t.Fatalf("register after reset: %d", res.StatusCode)
+	}
+}
+
+func TestRuntimeSettingsSecretMasked(t *testing.T) {
+	e := newEnv(t)
+	admin := e.authed(t)
+	e.do(t, admin, "PUT", "/api/admin/settings", map[string]any{setTurnstileSecret: "super-secret"})
+	_, view := e.do(t, admin, "GET", "/api/admin/settings", nil)
+	raw, _ := view["settings"].(map[string]any)
+	if raw[setTurnstileSecret] == "super-secret" {
+		t.Fatal("turnstile secret leaked in settings response")
+	}
+	if raw[setTurnstileSecret] != "true" { // masked → "is set"
+		t.Fatalf("masked secret: %v", raw[setTurnstileSecret])
+	}
+}
+
 func TestSecurityHeadersDisabled(t *testing.T) {
 	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {

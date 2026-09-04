@@ -14,7 +14,7 @@ type credentials struct {
 }
 
 func (h *handlers) register(w http.ResponseWriter, r *http.Request) {
-	if !h.opts.AllowRegister {
+	if !h.cfg().AllowRegister {
 		// still allow the very first (bootstrap admin) account
 		if n, _ := h.opts.Store.CountUsers(); n > 0 {
 			writeErr(w, http.StatusForbidden, auth.ErrRegisterClosed.Error())

@@ -23,24 +23,23 @@ func requestIsHTTPS(r *http.Request, trustProxy bool) bool {
 // sniffing, no framing, a tight referrer policy, a locked-down Permissions
 // policy, and a Content-Security-Policy tuned for the self-hosted SPA. HSTS is
 // added only when the request arrived over TLS. Disabled by
-// Options.DisableSecurityHeaders (FFF_SECURITY_HEADERS=off).
-func securityHeaders(opts Options) func(http.Handler) http.Handler {
-	csp := buildCSP(opts.TurnstileSiteKey != "")
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h := w.Header()
-			h.Set("X-Content-Type-Options", "nosniff")
-			h.Set("X-Frame-Options", "DENY")
-			h.Set("Referrer-Policy", "same-origin")
-			h.Set("Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=(), usb=()")
-			h.Set("Content-Security-Policy", csp)
-			h.Set("Cross-Origin-Opener-Policy", "same-origin")
-			if requestIsHTTPS(r, opts.TrustProxy) {
-				h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
+// Options.DisableSecurityHeaders (FFF_SECURITY_HEADERS=off). The CSP is
+// recomputed per request so a Turnstile key added from the admin settings
+// panel takes effect without a restart.
+func (h *handlers) securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hdr := w.Header()
+		hdr.Set("X-Content-Type-Options", "nosniff")
+		hdr.Set("X-Frame-Options", "DENY")
+		hdr.Set("Referrer-Policy", "same-origin")
+		hdr.Set("Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=(), usb=()")
+		hdr.Set("Content-Security-Policy", buildCSP(h.cfg().TurnstileSiteKey != ""))
+		hdr.Set("Cross-Origin-Opener-Policy", "same-origin")
+		if requestIsHTTPS(r, h.opts.TrustProxy) {
+			hdr.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // buildCSP assembles the policy. The SPA is same-origin with hashed assets, so
