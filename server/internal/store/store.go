@@ -187,10 +187,22 @@ func Open(dsn string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	// One writer connection keeps this simple — every write serializes through
+	// Go, so "database is locked" can't happen. WAL still helps: readers on the
+	// same connection don't block behind a write, and crash recovery is
+	// cheaper. synchronous=NORMAL is safe under WAL. busy_timeout is belt-and-
+	// braces for the rare external reader (a backup tool).
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
-		_ = db.Close()
-		return nil, err
+	for _, p := range []string{
+		`PRAGMA foreign_keys = ON`,
+		`PRAGMA journal_mode = WAL`,
+		`PRAGMA synchronous = NORMAL`,
+		`PRAGMA busy_timeout = 5000`,
+	} {
+		if _, err := db.Exec(p); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("%s: %w", p, err)
+		}
 	}
 	if _, err := db.Exec(schema); err != nil {
 		_ = db.Close()

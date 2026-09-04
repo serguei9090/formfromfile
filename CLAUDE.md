@@ -223,7 +223,9 @@ POSTs `FFF_ERROR_WEBHOOK`; CI gains `govulncheck` + Trivy (non-blocking).
 `EraseUser`); `GET /api/admin/users/{id}/export`, `POST .../erase`,
 `GET /api/admin/data-ops`.
 
-**PLAN-F29 complete.** Deferred: AI $ budget (needs SDK token accounting).
+**PLAN-F29 complete (F29a–F29f).** Also: `store.Open` now sets WAL +
+`synchronous=NORMAL` + `busy_timeout` (F29f); [`docs/SCALE.md`](docs/SCALE.md).
+Deferred: AI $ budget (needs SDK token accounting).
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

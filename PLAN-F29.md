@@ -88,6 +88,15 @@ investigation, do it whenever.
   panel + admin page gain the controls. +6 tests. **AI $ budget still
   deferred** — needs token accounting from the SDK response, not just the
   table.
+- **F29f done** — `store.Open` sets `journal_mode=WAL`, `synchronous=NORMAL`,
+  `busy_timeout=5000` (kept `SetMaxOpenConns(1)`). `docs/SCALE.md`: write
+  throughput is the ceiling (~100–300 submissions/s; logins are
+  argon2id-bound), the `pgx` adapter is ~2–4 days (`store` has no raw-SQL
+  leaks), plus a `k6` recipe. Conclusion: SQLite fits this workload.
+
+**PLAN-F29 complete (F29a–F29f).** The 8/10 gaps are closed — observability
+(`/metrics`, error webhook, CI scanning) and a scale/retention story (WAL,
+retention + GDPR, SCALE.md). Everything shipped dormant.
 
 ---
 
