@@ -157,6 +157,14 @@ export function HomePage() {
                       draft
                     </span>
                   )}
+                  {s.status === 'published' && s.publicAccess === 'authenticated' ? (
+                    <span
+                      className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent-foreground"
+                      title="Only signed-in users can view or fill this link"
+                    >
+                      signed-in only
+                    </span>
+                  ) : null}
                   {s.forkedFrom ? (
                     <span className="text-[10px] text-muted-foreground">fork</span>
                   ) : null}

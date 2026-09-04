@@ -38,6 +38,23 @@ func (h *handlers) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
+// sessionUser resolves the caller's session, if any, without requiring one —
+// unlike requireAuth, a missing/invalid cookie is not an error, just "no
+// user". Used by routes that sit outside the requireAuth group (the public
+// share/submit endpoints) but still need to know who's asking, either to
+// gate an "authenticated users only" template or to attribute a submission.
+func (h *handlers) sessionUser(r *http.Request) (auth.User, bool) {
+	c, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return auth.User{}, false
+	}
+	u, err := h.opts.Auth.UserByToken(r.Context(), c.Value)
+	if err != nil {
+		return auth.User{}, false
+	}
+	return u, true
+}
+
 func (h *handlers) requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !currentUser(r).IsAdmin() {

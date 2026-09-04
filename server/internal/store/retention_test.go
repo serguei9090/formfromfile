@@ -28,7 +28,7 @@ func TestPurgeExpiredSubmissions(t *testing.T) {
 	}
 
 	// per-template window of 30d → the 40d row goes
-	if _, err := st.SetTemplateOps("u1", sc.ID, 0, 30, ""); err != nil {
+	if _, err := st.SetTemplateOps("u1", sc.ID, 0, 30, "", "anyone"); err != nil {
 		t.Fatal(err)
 	}
 	if n, _ := st.PurgeExpiredSubmissions(0); n != 1 {
@@ -42,7 +42,7 @@ func TestPurgeExpiredSubmissions(t *testing.T) {
 	}
 
 	// clear the per-template window → default 7d now removes the 10d row
-	if _, err := st.SetTemplateOps("u1", sc.ID, 0, 0, ""); err != nil {
+	if _, err := st.SetTemplateOps("u1", sc.ID, 0, 0, "", "anyone"); err != nil {
 		t.Fatal(err)
 	}
 	if n, _ := st.PurgeExpiredSubmissions(7); n != 1 {

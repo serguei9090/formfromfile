@@ -194,7 +194,7 @@ fork / approval queue; conditional/computed/cross-field/async validation
 `author` role + `requireAuthor`; submission comments; HMAC webhooks
 (`internal/webhook`) + delivery log; `submissions.zip`; audit log; per-form
 submission cap + branding + completion analytics; order-preserving XML render.
-Migrations run to **v8** (F29b v6, F29e v7, F31 v8). **Deferred:** F24 (HCL/systemd/… formats +
+Migrations run to **v9** (F29b v6, F29e v7, F31 v8, F32b v9). **Deferred:** F24 (HCL/systemd/… formats +
 full-fidelity + bulk CSV fill), email-on-submit, hCaptcha, i18n, PWA;
 **parked:** F27 integrations (GitHub PR, CLI, OIDC).
 
@@ -259,11 +259,16 @@ Firebase config. Env-only for now (not yet in the F29b settings-panel layer).
 / none-alg rejection) — manually verified in-browser (button absent without
 config, present + graceful-error with a fake project).
 
-**F32a done** — admin-provisioned users: `auth.Service.CreateUser` (blank
+**F32a+b done** — admin-provisioned users: `auth.Service.CreateUser` (blank
 password → generated + returned once, never stored/logged in plaintext;
 explicit role, no bootstrap-admin logic), `POST /api/admin/users`, an "Add
-user" form in Admin → Users. See [`PLAN-F32.md`](PLAN-F32.md). **F32b
-(per-template auth-gated public forms) not started.**
+user" form in Admin → Users. Per-template access gate: migration **v9**
+(`schemas.public_access`, `anyone`|`authenticated`) — `/f/:slug` and its
+submit route 401 an anonymous caller when gated (`sessionUser` resolves an
+optional session outside `requireAuth`); ops-panel toggle; `PublicFillPage`
+shows a sign-in prompt on 401; `AuthCard` honors `?redirect=` (relative-path
+only) after login/register/Google sign-in so a blocked filler lands back on
+the form. See [`PLAN-F32.md`](PLAN-F32.md).
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

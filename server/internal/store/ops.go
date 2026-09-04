@@ -59,12 +59,15 @@ func (s *Store) SubmissionCount(templateID string) int {
 	return n
 }
 
-// SetTemplateOps updates the submission cap, brand JSON and retention window
-// for a template.
-func (s *Store) SetTemplateOps(userID, id string, cap, retentionDays int, brand string) (*Schema, error) {
+// SetTemplateOps updates the submission cap, brand JSON, retention window and
+// public-access mode for a template. publicAccess is caller-validated (the
+// httpapi handler rejects anything but "anyone"/"authenticated" before this
+// is called).
+func (s *Store) SetTemplateOps(userID, id string, cap, retentionDays int, brand, publicAccess string) (*Schema, error) {
 	res, err := s.DB.Exec(
-		`UPDATE schemas SET submission_cap = ?, brand = ?, retention_days = ? WHERE id = ? AND user_id = ?`,
-		cap, brand, retentionDays, id, userID)
+		`UPDATE schemas SET submission_cap = ?, brand = ?, retention_days = ?, public_access = ?
+		 WHERE id = ? AND user_id = ?`,
+		cap, brand, retentionDays, publicAccess, id, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -32,6 +32,22 @@ go test ./... && golangci-lint run ./...`), Conventional Commits +
   403). Manually verified in-browser: created a user, logged in with the
   generated password over a fresh session. See
   [`docs/AUTH.md`](docs/AUTH.md) §"Admin-provisioned accounts".
+- **F32b done** — migration **v9**: `schemas.public_access` (`anyone` |
+  `authenticated`, default `anyone`). `sessionUser(r)` resolves an optional
+  session for routes outside `requireAuth`; `publicTemplateBySlug` +
+  `createPublicSubmission` 401 when gated and no session — also fixed a
+  real bug in passing: public submissions were never attributed to a
+  signed-in filler because this route never ran `requireAuth`, so
+  `currentUser(r)` was always empty. `SetTemplateOps` gained the field;
+  every existing `/ops` call site updated so it doesn't reset silently.
+  Frontend: ops-panel "Who can access this link" select, a "signed-in only"
+  badge on `HomePage`, `PublicFillPage` shows a sign-in prompt on 401
+  linking to `/login?redirect=…`, `AuthCard` honors `?redirect=` after
+  login/register/Google sign-in (relative-path only, rejects `//host`).
+  +4 server tests (gate blocks/allows, attribution, invalid value rejected,
+  default unaffected) + 1 e2e (anonymous blocked → sign in → redirected
+  back → fills and submits). Manually verified in-browser end to end
+  against the built Docker image (migration v9 applies cleanly).
 
 ---
 

@@ -165,6 +165,11 @@ var migrations = []string{
 	// password-only accounts.
 	`ALTER TABLE users ADD COLUMN firebase_uid TEXT;
 	 CREATE UNIQUE INDEX ix_users_firebase_uid ON users(firebase_uid) WHERE firebase_uid IS NOT NULL;`,
+
+	// v9 — per-template access gate (F32b): a published template can require
+	// a signed-in session, not just "anyone with the link". Meaningless while
+	// visibility = 'private'.
+	`ALTER TABLE schemas ADD COLUMN public_access TEXT NOT NULL DEFAULT 'anyone';`,
 }
 
 func migrate(db *sql.DB) error {

@@ -39,6 +39,8 @@ export interface SchemaSummary {
   brand?: string
   viewCount: number
   retentionDays: number
+  /** "anyone" (default) or "authenticated" — meaningful only once published. */
+  publicAccess: 'anyone' | 'authenticated'
   createdAt: number
   updatedAt: number
 }

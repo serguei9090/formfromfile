@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,12 +30,23 @@ export function AuthCard({ mode }: { mode: 'login' | 'register' }) {
   const firebaseConfig = useAuthStore((s) => s.firebaseConfig)
   const user = useAuthStore((s) => s.user)
 
+  // `?redirect=/f/some-slug` sends a filler back to the form that required
+  // sign-in. Only a same-origin relative path is honored — reject anything
+  // that could act as an open redirect (a bare "//host" is parsed as
+  // protocol-relative by the browser, so block that too).
+  const [searchParams] = useSearchParams()
+  const redirectParam = searchParams.get('redirect')
+  const redirectTo =
+    redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+      ? redirectParam
+      : '/'
+
   useEffect(() => {
     void refresh()
   }, [refresh])
   useEffect(() => {
-    if (user) navigate('/', { replace: true })
-  }, [user, navigate])
+    if (user) navigate(redirectTo, { replace: true })
+  }, [user, navigate, redirectTo])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -50,7 +61,7 @@ export function AuthCard({ mode }: { mode: 'login' | 'register' }) {
     try {
       if (isLogin) await login(email, password)
       else await register(email, password)
-      navigate('/', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong')
     } finally {
@@ -65,7 +76,7 @@ export function AuthCard({ mode }: { mode: 'login' | 'register' }) {
     try {
       const idToken = await signInWithGoogle(firebaseConfig)
       await loginWithFirebaseIdToken(idToken)
-      navigate('/', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       const code = (err as { code?: string })?.code
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
@@ -137,7 +148,7 @@ export function AuthCard({ mode }: { mode: 'login' | 'register' }) {
             allowRegister ? (
               <p className="mt-4 text-sm text-muted-foreground">
                 Need an account?{' '}
-                <Link className="text-primary underline" to="/register">
+                <Link className="text-primary underline" to={`/register${window.location.search}`}>
                   Register
                 </Link>
               </p>
@@ -145,7 +156,7 @@ export function AuthCard({ mode }: { mode: 'login' | 'register' }) {
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link className="text-primary underline" to="/login">
+              <Link className="text-primary underline" to={`/login${window.location.search}`}>
                 Sign in
               </Link>
             </p>

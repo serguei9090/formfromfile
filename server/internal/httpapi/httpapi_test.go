@@ -583,6 +583,88 @@ func TestSecurityHeadersCSPWithTurnstile(t *testing.T) {
 	}
 }
 
+func TestPublicAccessGate(t *testing.T) {
+	e := newEnv(t)
+	owner := e.authed(t)
+
+	_, out := e.do(t, owner, "POST", "/api/schemas", map[string]any{
+		"name": "Gated", "kind": "json", "body": "{}", "formJson": "{}",
+	})
+	id := out["schema"].(map[string]any)["id"].(string)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+
+	// reject an invalid publicAccess value
+	if res, _ := e.do(t, owner, "POST", "/api/schemas/"+id+"/ops",
+		map[string]any{"submissionCap": 0, "brand": "", "publicAccess": "everyone"}); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid publicAccess: want 400, got %d", res.StatusCode)
+	}
+
+	// gate it
+	if res, _ := e.do(t, owner, "POST", "/api/schemas/"+id+"/ops",
+		map[string]any{"submissionCap": 0, "brand": "", "publicAccess": "authenticated"}); res.StatusCode != http.StatusOK {
+		t.Fatalf("set authenticated: %d", res.StatusCode)
+	}
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	slug := out["schema"].(map[string]any)["shareSlug"].(string)
+
+	// anonymous is blocked from both viewing and submitting
+	if res, _ := e.do(t, e.anon, "GET", "/api/public/templates/"+slug, nil); res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("anon view gated template: want 401, got %d", res.StatusCode)
+	}
+	if res, _ := e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"valuesJson": "{}", "output": "x"}); res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("anon submit gated template: want 401, got %d", res.StatusCode)
+	}
+
+	// a signed-in filler (a different account, not the owner) can view + submit,
+	// and the submission is attributed
+	fjar, _ := cookiejar.New(nil)
+	filler := &http.Client{Jar: fjar}
+	e.do(t, filler, "POST", "/api/auth/register",
+		map[string]string{"email": "filler2@example.com", "password": "correct-horse-7"})
+
+	if res, _ := e.do(t, filler, "GET", "/api/public/templates/"+slug, nil); res.StatusCode != http.StatusOK {
+		t.Fatalf("signed-in view: want 200, got %d", res.StatusCode)
+	}
+	if res, _ := e.do(t, filler, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"valuesJson": "{}", "output": "x"}); res.StatusCode != http.StatusCreated {
+		t.Fatalf("signed-in submit: want 201, got %d", res.StatusCode)
+	}
+
+	_, subs := e.do(t, owner, "GET", "/api/schemas/"+id+"/submissions", nil)
+	list := subs["submissions"].([]any)
+	if len(list) != 1 {
+		t.Fatalf("expected 1 submission, got %d", len(list))
+	}
+	subID := list[0].(map[string]any)["id"].(string)
+	_, detail := e.do(t, owner, "GET", "/api/submissions/"+subID, nil)
+	sub := detail["submission"].(map[string]any)
+	if sub["filledBy"] == nil || sub["filledBy"] == "" {
+		t.Fatalf("submission not attributed to the signed-in filler: %v", detail)
+	}
+}
+
+func TestPublicAccessDefaultUnaffected(t *testing.T) {
+	e := newEnv(t)
+	owner := e.authed(t)
+	_, out := e.do(t, owner, "POST", "/api/schemas", map[string]any{
+		"name": "Open", "kind": "json", "body": "{}", "formJson": "{}",
+	})
+	id := out["schema"].(map[string]any)["id"].(string)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	slug := out["schema"].(map[string]any)["shareSlug"].(string)
+
+	// no ops call at all — default publicAccess must stay "anyone"
+	if res, _ := e.do(t, e.anon, "GET", "/api/public/templates/"+slug, nil); res.StatusCode != http.StatusOK {
+		t.Fatalf("default access: want 200 anonymous, got %d", res.StatusCode)
+	}
+	if res, _ := e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+		map[string]string{"valuesJson": "{}", "output": "x"}); res.StatusCode != http.StatusCreated {
+		t.Fatalf("default access submit: want 201 anonymous, got %d", res.StatusCode)
+	}
+}
+
 func TestAdminCreateUser(t *testing.T) {
 	e := newEnv(t)
 	admin := e.authed(t)

@@ -28,6 +28,7 @@ func (h *handlers) setTemplateOps(w http.ResponseWriter, r *http.Request) {
 		SubmissionCap int    `json:"submissionCap"`
 		Brand         string `json:"brand"`
 		RetentionDays int    `json:"retentionDays"`
+		PublicAccess  string `json:"publicAccess"`
 	}
 	if err := decode(w, r, &b); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad request body")
@@ -43,7 +44,15 @@ func (h *handlers) setTemplateOps(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "brand too large")
 		return
 	}
-	sc, err := h.opts.Store.SetTemplateOps(currentUser(r).ID, chi.URLParam(r, "id"), b.SubmissionCap, b.RetentionDays, b.Brand)
+	if b.PublicAccess == "" {
+		b.PublicAccess = "anyone"
+	}
+	if b.PublicAccess != "anyone" && b.PublicAccess != "authenticated" {
+		writeErr(w, http.StatusBadRequest, `publicAccess must be "anyone" or "authenticated"`)
+		return
+	}
+	sc, err := h.opts.Store.SetTemplateOps(currentUser(r).ID, chi.URLParam(r, "id"),
+		b.SubmissionCap, b.RetentionDays, b.Brand, b.PublicAccess)
 	if handleErr(w, err, "schema not found") {
 		return
 	}

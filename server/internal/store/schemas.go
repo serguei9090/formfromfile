@@ -38,8 +38,11 @@ type Schema struct {
 	Brand            string   `json:"brand,omitempty"`
 	ViewCount        int      `json:"viewCount"`
 	RetentionDays    int      `json:"retentionDays"`
-	CreatedAt        int64    `json:"createdAt"`
-	UpdatedAt        int64    `json:"updatedAt"`
+	// PublicAccess is "anyone" (default) or "authenticated" — meaningful only
+	// while Visibility == "shared".
+	PublicAccess string `json:"publicAccess"`
+	CreatedAt    int64  `json:"createdAt"`
+	UpdatedAt    int64  `json:"updatedAt"`
 }
 
 // TemplateVersion is one saved revision of a template.
@@ -79,7 +82,7 @@ func decodeTags(s string) []string {
 }
 
 // summaryCols / detailCols keep the SELECT lists in one place.
-const opsCols = `submission_cap, brand, view_count, retention_days`
+const opsCols = `submission_cap, brand, view_count, retention_days, public_access`
 const summaryCols = `id, name, kind, visibility, share_slug, published_at, current_version,
 	status, folder, tags, forked_from, requires_approval, ` + opsCols + `, created_at, updated_at`
 const detailCols = `id, name, kind, body, form_json, visibility, share_slug, published_at,
@@ -91,7 +94,7 @@ func scanSummary(row interface{ Scan(...any) error }) (*Schema, error) {
 	var tags string
 	err := row.Scan(&sc.ID, &sc.Name, &sc.Kind, &sc.Visibility, &sc.ShareSlug, &sc.PublishedAt,
 		&sc.CurrentVersion, &sc.Status, &sc.Folder, &tags, &sc.ForkedFrom, &sc.RequiresApproval,
-		&sc.SubmissionCap, &sc.Brand, &sc.ViewCount, &sc.RetentionDays, &sc.CreatedAt, &sc.UpdatedAt)
+		&sc.SubmissionCap, &sc.Brand, &sc.ViewCount, &sc.RetentionDays, &sc.PublicAccess, &sc.CreatedAt, &sc.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +107,7 @@ func scanDetail(row interface{ Scan(...any) error }) (*Schema, error) {
 	var tags string
 	err := row.Scan(&sc.ID, &sc.Name, &sc.Kind, &sc.Body, &sc.FormJSON, &sc.Visibility, &sc.ShareSlug,
 		&sc.PublishedAt, &sc.CurrentVersion, &sc.Status, &sc.Folder, &tags, &sc.ForkedFrom,
-		&sc.RequiresApproval, &sc.SubmissionCap, &sc.Brand, &sc.ViewCount, &sc.RetentionDays, &sc.CreatedAt, &sc.UpdatedAt)
+		&sc.RequiresApproval, &sc.SubmissionCap, &sc.Brand, &sc.ViewCount, &sc.RetentionDays, &sc.PublicAccess, &sc.CreatedAt, &sc.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

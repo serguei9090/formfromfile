@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { Moon, Sun } from 'lucide-react'
 import { api, ApiError } from '@/api/client'
 import type { PublicTemplate } from '@/api/types'
@@ -32,6 +32,7 @@ export function PublicFillPage() {
   const { slug } = useParams()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
+  const [needsAuth, setNeedsAuth] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('')
   const [turnstileToken, setTurnstileToken] = useState('')
 
@@ -80,9 +81,13 @@ export function PublicFillPage() {
           tokenValues: {},
         })
       })
-      .catch((e) =>
-        setError(e instanceof ApiError && e.status === 404 ? 'This form link is not available.' : String(e)),
-      )
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setNeedsAuth(true)
+          return
+        }
+        setError(e instanceof ApiError && e.status === 404 ? 'This form link is not available.' : String(e))
+      })
   }, [slug])
 
   const accentStyle = loaded?.brand?.accent
@@ -108,7 +113,17 @@ export function PublicFillPage() {
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
       </div>
-      {error ? (
+      {needsAuth ? (
+        <Card className="space-y-3 p-8 text-center text-sm">
+          <p className="text-muted-foreground">This form requires you to sign in first.</p>
+          <Link
+            to={`/login?redirect=${encodeURIComponent(`/f/${slug}`)}`}
+            className="inline-block text-primary underline"
+          >
+            Sign in to continue
+          </Link>
+        </Card>
+      ) : error ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">{error}</Card>
       ) : !loaded ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

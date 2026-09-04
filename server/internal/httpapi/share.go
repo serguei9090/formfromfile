@@ -88,6 +88,12 @@ func (h *handlers) publicTemplateBySlug(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if sc.PublicAccess == "authenticated" {
+		if _, ok := h.sessionUser(r); !ok {
+			writeErr(w, http.StatusUnauthorized, "sign in to view this form")
+			return
+		}
+	}
 	h.opts.Store.BumpViewCount(sc.ID)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"template": publicTemplate{
@@ -131,6 +137,12 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	sessionU, hasSession := h.sessionUser(r)
+	if sc.PublicAccess == "authenticated" && !hasSession {
+		writeErr(w, http.StatusUnauthorized, "sign in to submit this form")
+		return
+	}
+
 	var b submissionBody
 	if err := decode(w, r, &b); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad request body")
@@ -159,7 +171,10 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 	}
 
 	// A logged-in filler is attributed; a share-link visitor is anonymous.
-	filledBy := currentUser(r).ID
+	// (This route sits outside requireAuth, so sessionUser — not
+	// currentUser, which only ever sees requireAuth-populated context — is
+	// what actually resolves an optional session here.)
+	filledBy := sessionU.ID
 
 	saved, err := h.opts.Store.CreateSubmission(store.Submission{
 		TemplateID: sc.ID,

@@ -92,7 +92,8 @@ validation presets → `%tokens%`); a **Generate .xsd** button when the
 detected format is XML (no formal schema yet? get a starting one from a
 sample, refine it, re-import); the **filler** flow (validated fill-only form
 at `/fill/:id`, export in the original format); and **sharing** (publish →
-`/f/:slug` public link → submissions collected server-side).
+`/f/:slug` public link, optionally restricted to signed-in users only →
+submissions collected server-side).
 
 ## Layout
 

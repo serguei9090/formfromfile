@@ -129,6 +129,35 @@ options, in order of preference:
 
 ---
 
+## Per-template access gate (F32b)
+
+By default every published form (`/f/:slug`) is reachable by anyone with the
+link — no login, exactly like before this existed. To restrict one to your
+signed-in users: open the template's submissions page → **Who can access
+this link** → **Signed-in users only**.
+
+- Once set, an anonymous visitor to `/f/:slug` sees "This form requires you
+  to sign in first" with a link to `/login?redirect=/f/:slug` instead of the
+  form. `POST .../submissions` on that slug 401s the same way if somehow
+  reached directly (e.g. a stale tab, a replayed request).
+- Any signed-in account can fill it — password or Google, any role. There's
+  no per-role or per-email allow-list yet (see "Non-goals" in
+  [`PLAN-F32.md`](../PLAN-F32.md) if you need tighter targeting).
+- Signing in from that prompt sends the filler straight back to the form —
+  `/login` (and `/register`) honor a `?redirect=` query param, restricted to
+  a same-origin relative path (rejects anything that could act as an open
+  redirect).
+- A submission from a gated form is now attributed to the signed-in filler
+  (`filledBy`) — worth knowing since **public submissions from an
+  `anyone`-access form were never attributed even when the filler happened
+  to be logged in**, before this change (that route sat outside the normal
+  auth middleware). Fixed as part of the same work.
+- The async per-field check proxy (`/public/templates/{slug}/check`) is
+  **not** gated — it only runs the author's own configured `checkUrl`, no
+  schema or submission data crosses it either way.
+
+---
+
 ## Current limitations
 
 - Firebase config is **env-only** — unlike Turnstile/AI-beta/etc it does not

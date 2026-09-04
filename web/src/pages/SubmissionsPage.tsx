@@ -264,6 +264,7 @@ export function SubmissionsPage() {
                   submissionCap: cap,
                   brand: template.brand ?? '',
                   retentionDays: template.retentionDays ?? 0,
+                  publicAccess: template.publicAccess ?? 'anyone',
                 })
                 setTemplate({ ...template, submissionCap: cap })
               }}
@@ -283,11 +284,32 @@ export function SubmissionsPage() {
                   submissionCap: template.submissionCap,
                   brand: template.brand ?? '',
                   retentionDays,
+                  publicAccess: template.publicAccess ?? 'anyone',
                 })
                 setTemplate({ ...template, retentionDays })
               }}
             />
             days (0 = keep forever)
+          </label>
+          <label className="flex items-center gap-2">
+            Who can access this link
+            <select
+              className="h-7 rounded-md border border-input bg-card px-2 text-xs"
+              value={template.publicAccess ?? 'anyone'}
+              onChange={async (e) => {
+                const publicAccess = e.target.value as 'anyone' | 'authenticated'
+                await api.post(`/schemas/${template.id}/ops`, {
+                  submissionCap: template.submissionCap,
+                  brand: template.brand ?? '',
+                  retentionDays: template.retentionDays ?? 0,
+                  publicAccess,
+                })
+                setTemplate({ ...template, publicAccess })
+              }}
+            >
+              <option value="anyone">Anyone with the link</option>
+              <option value="authenticated">Signed-in users only</option>
+            </select>
           </label>
           <label className="flex items-center gap-2">
             Public page accent
@@ -307,6 +329,7 @@ export function SubmissionsPage() {
                   submissionCap: template.submissionCap,
                   brand,
                   retentionDays: template.retentionDays ?? 0,
+                  publicAccess: template.publicAccess ?? 'anyone',
                 })
                 setTemplate({ ...template, brand })
               }}
