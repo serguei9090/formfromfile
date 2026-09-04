@@ -391,6 +391,62 @@ func TestOpsCapAuditAndBranding(t *testing.T) {
 	}
 }
 
+func TestSubmissionCooldownAndDailyCeiling(t *testing.T) {
+	// freeze + advance a fake clock; reset the process-global guards
+	base := time.Date(2026, 9, 4, 12, 0, 0, 0, time.UTC)
+	now := base
+	clock = func() time.Time { return now }
+	submitCooldown = &slugCooldown{last: map[string]time.Time{}}
+	submitDaily = &dailyCeiling{}
+	t.Cleanup(func() {
+		clock = time.Now
+		submitCooldown = &slugCooldown{last: map[string]time.Time{}}
+		submitDaily = &dailyCeiling{}
+	})
+
+	e := newEnv(t)
+	owner := e.authed(t)
+	_, out := e.do(t, owner, "POST", "/api/schemas", map[string]any{
+		"name": "T", "kind": "json", "body": "{}", "formJson": "{}",
+	})
+	id := out["schema"].(map[string]any)["id"].(string)
+	e.do(t, owner, "POST", "/api/schemas/"+id+"/publish", nil)
+	_, out = e.do(t, owner, "GET", "/api/schemas/"+id, nil)
+	slug := out["schema"].(map[string]any)["shareSlug"].(string)
+
+	e.do(t, owner, "PUT", "/api/admin/settings", map[string]any{
+		"submission_cooldown_seconds": "30",
+		"submission_global_daily_max": "2",
+	})
+
+	submit := func() int {
+		res, _ := e.do(t, e.anon, "POST", "/api/public/templates/"+slug+"/submissions",
+			map[string]string{"valuesJson": "{}", "output": "x"})
+		return res.StatusCode
+	}
+
+	if got := submit(); got != http.StatusCreated {
+		t.Fatalf("1st submit: %d", got)
+	}
+	if got := submit(); got != http.StatusTooManyRequests {
+		t.Fatalf("2nd submit (within cooldown): %d, want 429", got)
+	}
+	now = now.Add(31 * time.Second)
+	if got := submit(); got != http.StatusCreated {
+		t.Fatalf("3rd submit (cooldown elapsed): %d", got)
+	}
+	// daily ceiling = 2 now hit
+	now = now.Add(31 * time.Second)
+	if got := submit(); got != http.StatusTooManyRequests {
+		t.Fatalf("4th submit (daily ceiling): %d, want 429", got)
+	}
+	// next UTC day → counter resets
+	now = base.Add(24 * time.Hour)
+	if got := submit(); got != http.StatusCreated {
+		t.Fatalf("submit next day: %d", got)
+	}
+}
+
 func TestAIDisabledWithoutKey(t *testing.T) {
 	e := newEnv(t) // Router built with no AI service
 	owner := e.authed(t)

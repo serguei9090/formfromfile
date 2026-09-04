@@ -68,8 +68,9 @@ reaches the page can create an account.
 ### Runtime settings (no restart)
 
 `FFF_ALLOW_REGISTER`, `FFF_TURNSTILE_SITE_KEY` / `_SECRET`,
-`FFF_WEBHOOK_ALLOW_PRIVATE`, `FFF_AI_BETA`, plus a default submission cap can
-be overridden live from **Admin → Settings** in the app. A stored setting wins
+`FFF_WEBHOOK_ALLOW_PRIVATE`, `FFF_AI_BETA`, a default submission cap, a
+per-form submission cooldown, and a global daily submission ceiling can all be
+set live from **Admin → Settings** in the app. A stored setting wins
 over the env var; "reset" drops it and the env/default applies again. The env
 vars are still the right way to seed a fresh deploy and to keep secrets out of
 the database UI where possible (the Turnstile secret, if set via the panel, is

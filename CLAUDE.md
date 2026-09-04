@@ -214,13 +214,15 @@ row › startup value, 5s cache): `GET`/`PUT /api/admin/settings`, an
 webhook-allow-private / AI beta / default submission cap with **no restart**.
 `--session-secret` dropped.
 
-**F29c done** — `internal/metrics` (hand-rolled Prometheus text); `GET
+**F29c+d done** — `internal/metrics` (hand-rolled Prometheus text); `GET
 /metrics` gated by `FFF_METRICS_TOKEN` (bearer); `h.recoverer` logs panics +
 POSTs `FFF_ERROR_WEBHOOK`; CI gains `govulncheck` + Trivy (non-blocking).
+`httpapi/submitguard.go` — per-slug submission cooldown + global daily ceiling
+(settings `submission_cooldown_seconds` / `submission_global_daily_max`, 0=off).
 
-**Next (F29d–F29e):** [`PLAN-F29.md`](PLAN-F29.md) — rate-limit depth
-(per-slug cooldown + global ceiling), data retention + GDPR export/delete
-(v7, + an `ai_usage` table for an AI $ budget). Everything ships dormant.
+**Next (F29e):** [`PLAN-F29.md`](PLAN-F29.md) — data retention + GDPR
+export/delete (migration v7, + an `ai_usage` table for an AI $ budget).
+Everything ships dormant.
 
 **F5 done** — `Dockerfile` (bun → distroless static, ~14 MB) +
 `.github/workflows/ci.yml` (web gate, server gate, docker build + smoke test) +

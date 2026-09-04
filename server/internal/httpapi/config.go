@@ -10,25 +10,32 @@ import (
 // overrides the matching Options field / env var. Missing row → the value
 // passed to Router() (which itself came from an env var or a built-in default).
 const (
-	setAllowRegister        = "allow_register"
-	setTurnstileSiteKey     = "turnstile_site_key"
-	setTurnstileSecret      = "turnstile_secret"
-	setWebhookAllowPrivate  = "webhook_allow_private"
-	setAIBeta               = "ai_beta"
-	setSubmissionCapDefault = "submission_cap_default"
+	setAllowRegister          = "allow_register"
+	setTurnstileSiteKey       = "turnstile_site_key"
+	setTurnstileSecret        = "turnstile_secret"
+	setWebhookAllowPrivate    = "webhook_allow_private"
+	setAIBeta                 = "ai_beta"
+	setSubmissionCapDefault   = "submission_cap_default"
+	setSubmissionCooldownSecs = "submission_cooldown_seconds"
+	setSubmissionGlobalDaily  = "submission_global_daily_max"
 )
 
 // settingKeys is the allow-list the PUT handler validates against.
 var settingKeys = []string{
 	setAllowRegister, setTurnstileSiteKey, setTurnstileSecret,
 	setWebhookAllowPrivate, setAIBeta, setSubmissionCapDefault,
+	setSubmissionCooldownSecs, setSubmissionGlobalDaily,
 }
 
 // boolSettingKeys / intSettingKeys drive type validation on write.
 var boolSettingKeys = map[string]bool{
 	setAllowRegister: true, setWebhookAllowPrivate: true, setAIBeta: true,
 }
-var intSettingKeys = map[string]bool{setSubmissionCapDefault: true}
+var intSettingKeys = map[string]bool{
+	setSubmissionCapDefault:   true,
+	setSubmissionCooldownSecs: true,
+	setSubmissionGlobalDaily:  true,
+}
 
 // secretSettingKeys never leave the server in a readable form.
 var secretSettingKeys = map[string]bool{setTurnstileSecret: true}
@@ -42,6 +49,8 @@ type effConfig struct {
 	WebhookAllowPrivate  bool
 	AIBeta               bool
 	SubmissionCapDefault int
+	SubmissionCooldown   int // seconds between submissions to one form; 0 = off
+	SubmissionGlobalMax  int // accepted public submissions per UTC day; 0 = off
 }
 
 // cfg returns the effective config, recomputed at most every 5s (or on the
@@ -98,11 +107,18 @@ func applySettings(c *effConfig, m map[string]string) {
 	if v, ok := m[setAIBeta]; ok {
 		c.AIBeta = truthySetting(v)
 	}
-	if v, ok := m[setSubmissionCapDefault]; ok {
+	c.SubmissionCapDefault = intSetting(m, setSubmissionCapDefault, c.SubmissionCapDefault)
+	c.SubmissionCooldown = intSetting(m, setSubmissionCooldownSecs, c.SubmissionCooldown)
+	c.SubmissionGlobalMax = intSetting(m, setSubmissionGlobalDaily, c.SubmissionGlobalMax)
+}
+
+func intSetting(m map[string]string, key string, fallback int) int {
+	if v, ok := m[key]; ok {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			c.SubmissionCapDefault = n
+			return n
 		}
 	}
+	return fallback
 }
 
 func truthySetting(v string) bool {

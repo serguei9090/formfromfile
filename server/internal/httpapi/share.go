@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -107,7 +108,20 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 		writeErr(w, http.StatusTooManyRequests, "too many submissions, try again shortly")
 		return
 	}
-	sc, err := h.opts.Store.SchemaBySlug(chi.URLParam(r, "slug"))
+	slug := chi.URLParam(r, "slug")
+	cfg := h.cfg()
+
+	if ok, retry := submitCooldown.check(slug, time.Duration(cfg.SubmissionCooldown)*time.Second); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+		writeErr(w, http.StatusTooManyRequests, "this form was just submitted — try again shortly")
+		return
+	}
+	if !submitDaily.check(cfg.SubmissionGlobalMax) {
+		writeErr(w, http.StatusTooManyRequests, "the daily submission limit has been reached, try again tomorrow")
+		return
+	}
+
+	sc, err := h.opts.Store.SchemaBySlug(slug)
 	if errors.Is(err, store.ErrNotFound) {
 		writeErr(w, http.StatusNotFound, "template not found")
 		return
@@ -122,7 +136,7 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 		writeErr(w, http.StatusBadRequest, "bad request body")
 		return
 	}
-	if secret := h.cfg().TurnstileSecret; secret != "" && !verifyTurnstile(r.Context(), secret, b.Turnstile, clientIP(r)) {
+	if secret := cfg.TurnstileSecret; secret != "" && !verifyTurnstile(r.Context(), secret, b.Turnstile, clientIP(r)) {
 		writeErr(w, http.StatusForbidden, "captcha check failed — please retry")
 		return
 	}
@@ -137,7 +151,7 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 	// a per-template cap wins; otherwise fall back to the org-wide default
 	limit := sc.SubmissionCap
 	if limit == 0 {
-		limit = h.cfg().SubmissionCapDefault
+		limit = cfg.SubmissionCapDefault
 	}
 	if limit > 0 && h.opts.Store.SubmissionCount(sc.ID) >= limit {
 		writeErr(w, http.StatusForbidden, "this form is no longer accepting submissions")
@@ -157,6 +171,9 @@ func (h *handlers) createPublicSubmission(w http.ResponseWriter, r *http.Request
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	submitCooldown.record(slug)
+	submitDaily.record()
+
 	// only fire on creation for auto-approved submissions; gated ones fire on review
 	if saved.Status == "approved" {
 		h.fireSubmissionWebhooks(sc.ID, "submission.created", saved)

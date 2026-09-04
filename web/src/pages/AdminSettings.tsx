@@ -72,6 +72,45 @@ function Toggle({
   )
 }
 
+function NumField({
+  id,
+  label,
+  hint,
+  value,
+  source,
+  onSave,
+}: {
+  id: string
+  label: string
+  hint: string
+  value: string | number | boolean | undefined
+  source?: 'override' | 'base'
+  onSave: (v: string) => void
+}) {
+  const current = String(value ?? 0)
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={id}>
+        {label} <SourceBadge source={source} />
+      </Label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          className="w-28"
+          defaultValue={current}
+          onBlur={(e) => {
+            const v = e.target.value.trim()
+            if (v !== current) onSave(v || '0')
+          }}
+        />
+        <span className="text-xs text-muted-foreground">{hint}</span>
+      </div>
+    </div>
+  )
+}
+
 export function AdminSettings() {
   const refreshConfig = useAuthStore((s) => s.refresh)
   const [view, setView] = useState<SettingsView | null>(null)
@@ -206,29 +245,32 @@ export function AdminSettings() {
         />
       </Card>
 
-      <Card className="space-y-2 p-4">
+      <Card className="space-y-3 p-4">
         <h3 className="text-sm font-semibold">Limits</h3>
-        <div className="space-y-1">
-          <Label htmlFor="cap">
-            Default submission cap per form <SourceBadge source={src.submission_cap_default} />
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="cap"
-              type="text"
-              inputMode="numeric"
-              className="w-28"
-              defaultValue={String(eff.submission_cap_default ?? 0)}
-              onBlur={(e) => {
-                const v = e.target.value.trim()
-                if (v !== String(eff.submission_cap_default ?? 0)) void put('submission_cap_default', v || '0')
-              }}
-            />
-            <span className="text-xs text-muted-foreground">
-              0 = unlimited. A per-form cap still overrides this.
-            </span>
-          </div>
-        </div>
+        <NumField
+          id="cap"
+          label="Default submission cap per form"
+          source={src.submission_cap_default}
+          value={eff.submission_cap_default}
+          hint="0 = unlimited. A per-form cap still overrides this."
+          onSave={(v) => void put('submission_cap_default', v)}
+        />
+        <NumField
+          id="cooldown"
+          label="Per-form submission cooldown (seconds)"
+          source={src.submission_cooldown_seconds}
+          value={eff.submission_cooldown_seconds}
+          hint="Minimum gap between accepted submissions to the same form. 0 = off."
+          onSave={(v) => void put('submission_cooldown_seconds', v)}
+        />
+        <NumField
+          id="daily"
+          label="Global daily submission ceiling"
+          source={src.submission_global_daily_max}
+          value={eff.submission_global_daily_max}
+          hint="Total accepted public submissions per day across all forms. 0 = off."
+          onSave={(v) => void put('submission_global_daily_max', v)}
+        />
       </Card>
     </div>
   )

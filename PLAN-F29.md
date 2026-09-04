@@ -72,6 +72,12 @@ investigation, do it whenever.
   CI: `govulncheck` + Trivy image scan, both `continue-on-error` for now.
   **Deferred:** AI $ budget (needs an `ai_usage` table — folds into F29e's
   migration) + Sentry SDK (the generic webhook covers it). +4 tests.
+- **F29d done** — `httpapi/submitguard.go`: per-slug cooldown
+  (`submission_cooldown_seconds`) + process-wide UTC-daily ceiling
+  (`submission_global_daily_max`), both settings-driven, `0` = off, checked
+  before the schema load and committed only after the row is stored.
+  `Retry-After` on the cooldown 429. Overridable `clock` for tests. Admin
+  panel gains the two number fields. +1 test (fake clock).
 
 ---
 

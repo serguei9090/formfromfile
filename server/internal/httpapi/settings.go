@@ -39,12 +39,14 @@ func (h *handlers) getSettings(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	effective := map[string]any{
-		setAllowRegister:        c.AllowRegister,
-		setTurnstileSiteKey:     c.TurnstileSiteKey,
-		setTurnstileSecret:      c.TurnstileSecret != "", // masked
-		setWebhookAllowPrivate:  c.WebhookAllowPrivate,
-		setAIBeta:               c.AIBeta,
-		setSubmissionCapDefault: c.SubmissionCapDefault,
+		setAllowRegister:          c.AllowRegister,
+		setTurnstileSiteKey:       c.TurnstileSiteKey,
+		setTurnstileSecret:        c.TurnstileSecret != "", // masked
+		setWebhookAllowPrivate:    c.WebhookAllowPrivate,
+		setAIBeta:                 c.AIBeta,
+		setSubmissionCapDefault:   c.SubmissionCapDefault,
+		setSubmissionCooldownSecs: c.SubmissionCooldown,
+		setSubmissionGlobalDaily:  c.SubmissionGlobalMax,
 	}
 
 	// "override" = a settings row is in force; "base" = the value Router() was
