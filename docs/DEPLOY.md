@@ -11,13 +11,31 @@ file under `/data`.
 
 ---
 
-## 1. The container
+## 0. Quickest — `docker compose` + Caddy (auto-TLS)
+
+```bash
+cp .env.example .env      # set DOMAIN + ACME_EMAIL
+docker compose up -d
+```
+
+`docker-compose.yml` runs the app (no host ports) + Caddy (fetches a Let's
+Encrypt cert for `$DOMAIN`, forwards to the app, adds HSTS + `nosniff` +
+`X-Frame-Options: DENY`). The `Caddyfile` has a commented `remote_ip` block to
+lock it to your VPN / office ranges.
+
+That's it for a single-team internal deploy. Sections 1–2 below are the manual
+equivalents if you don't want compose.
+
+---
+
+## 1. The container (manual)
 
 ```bash
 docker build -t formfromfile .
 docker run -d --name fff \
   -p 127.0.0.1:8787:8787 \
   -v fff-data:/data \
+  -e FFF_TRUST_PROXY=true -e FFF_LOG_FORMAT=json \
   formfromfile
 ```
 
@@ -33,13 +51,39 @@ docker run -d --name fff \
 | `FFF_ADDR` | `0.0.0.0:8787` | listen address (leave as-is in the container) |
 | `FFF_DB` | `/data/formfromfile.db` | SQLite path — keep it on the volume |
 | `FFF_ALLOW_REGISTER` | `true` | set `false` after the first admin signs up, then create users from `/admin` |
-| `FFF_ANTHROPIC_API_KEY` | — | AI beta (see [`AI.md`](AI.md)) |
-| `FFF_AI_BETA` | — | `true` to actually turn AI on |
+| `FFF_TRUST_PROXY` | — | `true` to read `X-Forwarded-For` / `X-Real-IP` for rate-limit keys. **Only** behind a proxy that overwrites those headers (Caddy/nginx/Cloudflare) — otherwise clients spoof their IP. |
+| `FFF_LOG_FORMAT` | text | `json` for structured lines (one per request: id, status, dur, ip). `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error`. |
+| `FFF_WEBHOOK_ALLOW_PRIVATE` | — | `true` lets webhook targets be LAN / loopback / http (internal deployments). Default blocks them (SSRF). |
+| `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | Cloudflare Turnstile — see §CAPTCHA below. Both set → public-form CAPTCHA. |
+| `FFF_ANTHROPIC_API_KEY` | — | AI beta key (see [`AI.md`](AI.md)) |
+| `FFF_AI_BETA` | — | `true` to actually turn AI on — **needs the key too** |
 | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
 | `FFF_SESSION_SECRET` | — | reserved; unused today (sessions are opaque DB tokens) |
 
 Set `FFF_ALLOW_REGISTER=false` once you have your admin — otherwise anyone who
 reaches the page can create an account.
+
+---
+
+## CAPTCHA on public forms — Cloudflare Turnstile
+
+**Free**, unlimited, no credit card. You do **not** need to proxy your site
+through Cloudflare — Turnstile is a standalone widget + a verify API.
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Turnstile** → *Add
+   widget*. Domain = your `$DOMAIN` (or `localhost` for testing). Copy the
+   **site key** and **secret key**.
+2. Set `FFF_TURNSTILE_SITE_KEY` + `FFF_TURNSTILE_SECRET` (both, or neither).
+3. Restart. `/f/:slug` now shows the challenge; `POST .../submissions` verifies
+   the token server-side against `challenges.cloudflare.com`.
+
+Unset → no widget, no verification; the per-IP window (20/min) is the only
+control. **Internal-only deployments can skip this.** It can be toggled at any
+time by adding/removing the two env vars — no rebuild.
+
+If you *do* front the whole app with Cloudflare (a proxied DNS record), you get
+its WAF + DDoS + bot-fight for free on top, and can use **Zero Trust → Access**
+for SSO — see §2b.
 
 ---
 

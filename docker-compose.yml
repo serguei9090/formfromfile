@@ -1,0 +1,49 @@
+# Internal deployment — app + Caddy (auto-TLS) + a named data volume.
+# Copy .env.example to .env, set DOMAIN + ACME_EMAIL, then: docker compose up -d
+#
+# For a zero-open-port setup (Cloudflare Tunnel + Access), see docs/DEPLOY.md
+# §2b and drop the caddy service.
+
+services:
+  app:
+    build: .
+    image: formfromfile:local
+    restart: unless-stopped
+    environment:
+      FFF_ADDR: 0.0.0.0:8787
+      FFF_DB: /data/formfromfile.db
+      # set false once your admin account exists, then create users from /admin
+      FFF_ALLOW_REGISTER: "${FFF_ALLOW_REGISTER:-true}"
+      # honour X-Forwarded-For — Caddy sets it, and nothing else can reach :8787
+      FFF_TRUST_PROXY: "true"
+      FFF_LOG_FORMAT: json
+      # optional — internal webhook targets on the LAN
+      FFF_WEBHOOK_ALLOW_PRIVATE: "${FFF_WEBHOOK_ALLOW_PRIVATE:-false}"
+      # optional — public-form spam control (free; keys from the Turnstile dashboard)
+      FFF_TURNSTILE_SITE_KEY: "${FFF_TURNSTILE_SITE_KEY:-}"
+      FFF_TURNSTILE_SECRET: "${FFF_TURNSTILE_SECRET:-}"
+      # optional — AI beta (needs BOTH)
+      FFF_ANTHROPIC_API_KEY: "${FFF_ANTHROPIC_API_KEY:-}"
+      FFF_AI_BETA: "${FFF_AI_BETA:-}"
+    volumes:
+      - fff-data:/data
+    # no host ports — only Caddy talks to the app, over the compose network
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: "${DOMAIN:?set DOMAIN in .env}"
+      ACME_EMAIL: "${ACME_EMAIL:?set ACME_EMAIL in .env}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  fff-data:
+  caddy-data:
+  caddy-config:

@@ -39,6 +39,10 @@ cd server && go build ./... && go vet ./... && go test ./...
 | `--addr` | `FFF_ADDR` | `127.0.0.1:8787` | listen address |
 | `--db` | `FFF_DB` | `formfromfile.db` | SQLite file path |
 | `--allow-register` | `FFF_ALLOW_REGISTER` | `true` | public self-registration (bootstrap admin always allowed) — set `false` once your admin exists |
+| — | `FFF_TRUST_PROXY` | — | `true` to key rate-limits off `X-Forwarded-For` / `X-Real-IP` — **only** behind a proxy that overwrites them (Caddy/nginx/Cloudflare) |
+| — | `FFF_LOG_FORMAT` | text | `json` for one structured line per request (id, status, dur, ip); `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error` |
+| — | `FFF_WEBHOOK_ALLOW_PRIVATE` | — | `true` allows webhook targets on LAN / loopback / `http` — default blocks them (SSRF) |
+| — | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | both set → Cloudflare Turnstile CAPTCHA on public forms (free; see [`docs/DEPLOY.md`](docs/DEPLOY.md)) |
 | — | `FFF_ANTHROPIC_API_KEY` | — | AI assist key (beta) |
 | — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/AI.md)) |
 | — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
@@ -46,8 +50,10 @@ cd server && go build ./... && go vet ./... && go test ./...
 
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.
-Deploying for a team? → [`docs/DEPLOY.md`](docs/DEPLOY.md) (nginx / Cloudflare
-Tunnel + Access, backups).
+Deploying for a team? → [`docs/DEPLOY.md`](docs/DEPLOY.md). Fastest path:
+`cp .env.example .env` (set `DOMAIN` + `ACME_EMAIL`) then `docker compose up -d`
+— app + Caddy (auto-TLS, security headers) + a named data volume. Also covers
+nginx, Cloudflare Tunnel + Access (SSO, zero open ports), and Litestream backups.
 
 ## Docker
 

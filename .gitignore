@@ -21,3 +21,6 @@ server/cmd/formfromfile/dist/*
 !server/cmd/formfromfile/dist/.gitkeep
 bin/
 *.log
+
+# local deploy config
+.env

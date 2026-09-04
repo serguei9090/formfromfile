@@ -30,11 +30,21 @@ and F27 (integrations) deferred.
   branding (accent colour + logo); completion-rate analytics.
 - **Order-preserving XML** (F19) — opt-in render that keeps between-element
   comments in place. `CHANGELOG.md`, `v0.1.0` tag.
+- **Hardening + ops** — SSRF guard on webhook + async-check targets (blocks
+  loopback / RFC1918 / link-local / CGNAT / non-`https`; `netguard` pkg);
+  Cloudflare Turnstile CAPTCHA on public forms (env-gated, toggle without
+  rebuild); structured request logging (`log/slog`, request IDs, `json`
+  option); frontend global error handler + toast surface + error boundary;
+  `docker-compose.yml` + `Caddyfile` (auto-TLS, security headers) for a
+  one-command internal deploy; `golangci-lint` v2 in the tree, 0 issues.
 
 ### Env
 
-`FFF_ANTHROPIC_API_KEY`, `FFF_AI_MODEL` (default `claude-sonnet-5`). Both
-degrade to feature-off.
+- `FFF_ANTHROPIC_API_KEY` + `FFF_AI_BETA` (both required — AI is off by
+  default), `FFF_AI_MODEL` (default `claude-sonnet-5`).
+- `FFF_TRUST_PROXY`, `FFF_LOG_FORMAT` / `FFF_LOG_LEVEL`,
+  `FFF_WEBHOOK_ALLOW_PRIVATE`, `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET`.
+  All degrade to feature-off / safe default.
 
 ## [0.1.0] — 2026-09-03
 

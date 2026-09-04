@@ -1,0 +1,25 @@
+# Caddy fetches a Let's Encrypt cert for {$DOMAIN} automatically.
+# {$ACME_EMAIL} is used for the ACME account.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+
+	# security headers — the SPA is self-hosted so a tight CSP is feasible
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options    "nosniff"
+		Referrer-Policy           "same-origin"
+		X-Frame-Options           "DENY"
+		-Server
+	}
+
+	# uncomment to restrict to the VPN / office ranges (internal only):
+	# @notallowed not remote_ip 10.0.0.0/8 192.168.0.0/16
+	# respond @notallowed 403
+
+	reverse_proxy app:8787
+}

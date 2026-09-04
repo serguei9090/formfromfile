@@ -17,4 +17,8 @@ server/formfromfile
 **/*.log
 *.md
 docs
+docker-compose.yml
+Caddyfile
+.env
+.env.example
 PLAN*.md
