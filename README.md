@@ -152,6 +152,10 @@ how to add things) is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
 - **Ops hardening** — SSRF-guarded outbound requests (webhooks, async
   checks), Cloudflare Turnstile on public forms, structured JSON logging,
   per-IP rate limits, security headers + CSP, Prometheus metrics.
+- **Storage** — embedded SQLite by default (one file, no setup). Point
+  `FFF_DATABASE_URL` / the `FFF_DB_*` vars at a Postgres to use that instead
+  — same schema, same features (see
+  [`docs/deployment/DEPLOY.md`](docs/deployment/DEPLOY.md#postgres-optional)).
 
 ## Screenshots
 

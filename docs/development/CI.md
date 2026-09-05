@@ -34,14 +34,19 @@ bun run build && bun run test && bun run lint
 
 ## `server`
 
-Runs in `server/`, Go 1.26.
+Runs in `server/`, Go 1.26. A `postgres:16` service container is attached
+for step 3.
 
 1. `go vet ./...`
-2. `go test ./...`
-3. `go build ./...`
-4. `golangci-lint` (v2, via `golangci/golangci-lint-action`) — must be clean,
+2. `go test ./...` — the default SQLite path.
+3. `go test -p 1 ./internal/store/... ./internal/auth/...` with
+   `TEST_DATABASE_URL` set — the **same test bodies** a second time against
+   Postgres (the harness wipes the `public` schema per test; `-p 1` keeps the
+   two packages from racing on the shared DB).
+4. `go build ./...`
+5. `golangci-lint` (v2, via `golangci/golangci-lint-action`) — must be clean,
    this one blocks the job.
-5. `govulncheck` — **non-blocking** (`continue-on-error: true`). Stdlib
+6. `govulncheck` — **non-blocking** (`continue-on-error: true`). Stdlib
    advisories often just need the next Go patch release; flip this to
    blocking once it's been green for a while.
 
@@ -52,6 +57,22 @@ cd server
 go vet ./... && go test ./... && go build ./...
 golangci-lint run ./...   # go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 ```
+
+### Postgres tests locally
+
+```bash
+docker run -d --name fff-pg -e POSTGRES_PASSWORD=test -e POSTGRES_DB=ffftest \
+  -p 55432:5432 postgres:16-alpine
+TEST_DATABASE_URL='postgres://postgres:test@localhost:55432/ffftest?sslmode=disable' \
+  go test -p 1 -count=1 ./internal/store/... ./internal/auth/...
+docker rm -f fff-pg
+```
+
+To smoke-test the whole app against Postgres (register → publish → submit →
+admin), run the binary with the discrete vars and curl it — see
+[`../deployment/DEPLOY.md`](../deployment/DEPLOY.md#postgres-optional) for the
+env, and [`../planning/PLAN-F33.md`](../planning/PLAN-F33.md) for the checklist
+that was run before F33 shipped.
 
 ## `e2e`
 

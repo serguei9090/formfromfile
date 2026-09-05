@@ -191,6 +191,29 @@ One commit. `FFF_DATABASE_URL=postgres://…` (or `_FILE`) switches
   (commented `db:` service), README env table, `DEPLOY.md` §Postgres,
   `SCALE.md`.
 
+### Verified end-to-end (ephemeral `postgres:16` container)
+
+Beyond the `store` + `auth` unit suites on both backends, the running app was
+driven against a throwaway Postgres started via the **discrete `FFF_DB_*`
+vars** with a password containing `@ : / #` (proves the URL assembly's
+escaping — an inline URL with that password would be malformed):
+
+- startup log redacts the DSN to `postgres://host/db`; 9 migrations applied,
+  12 tables in `public`.
+- register → first user is admin; login / session cookie.
+- create schema → update to v2 → publish → **anonymous** fill + submit →
+  owner lists the submission; `template_versions` and per-user scoping both
+  correct.
+- admin creates a user (generated password); the **last-admin guard** returns
+  409 for the sole admin, then allows the demotion once a second admin
+  exists (the transactional `FOR UPDATE` path).
+- runtime settings write → reflected in `/api/config` with no restart, and
+  survives a restart (stored in Postgres); `audit_log` populated.
+- `formfromfile user ls` / `passwd` against the same DB via the discrete vars
+  and via `FFF_DB_PASSWORD_FILE`.
+- the SPA (Vite proxy → Postgres API) loads clean, login + My Forms shows the
+  published form served from Postgres.
+
 ### Not done (follow-up)
 - `httpapi` tests still SQLite-only (they exercise HTTP wiring, not SQL
   portability; `store` + `auth` cover the backend).
