@@ -1,6 +1,9 @@
 # FormFromFile
 
 [![CI](https://github.com/serguei9090/formfromfile/actions/workflows/ci.yml/badge.svg)](https://github.com/serguei9090/formfromfile/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](server/go.mod)
+[![React](https://img.shields.io/badge/react-19-149ECA?logo=react&logoColor=white)](web/package.json)
 
 Upload an XML, YAML, or JSON file (or import a JSON Schema / `.xsd`) → the app
 auto-detects its structure (including repeating / dynamic-array sections) →
@@ -61,14 +64,14 @@ cd server && go build ./... && go vet ./... && go test ./...
 | — | `FFF_TRUST_PROXY` | — | `true` to key rate-limits off `X-Forwarded-For` / `X-Real-IP` — **only** behind a proxy that overwrites them (Caddy/nginx/Cloudflare) |
 | — | `FFF_LOG_FORMAT` | text | `json` for one structured line per request (id, status, dur, ip); `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error` |
 | — | `FFF_WEBHOOK_ALLOW_PRIVATE` | — | `true` allows webhook targets on LAN / loopback / `http` — default blocks them (SSRF) |
-| — | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | both set → Cloudflare Turnstile CAPTCHA on public forms (free; see [`docs/DEPLOY.md`](docs/deployment/DEPLOY.md)) |
+| — | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | both set → Cloudflare Turnstile CAPTCHA on public forms (free; see [`docs/deployment/DEPLOY.md`](docs/deployment/DEPLOY.md)) |
 | — | `FFF_ANTHROPIC_API_KEY` | — | AI assist key (beta) |
-| — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/guides/AI.md)) |
+| — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/guides/AI.md`](docs/guides/AI.md)) |
 | — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
 | — | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response; `off` to disable (debugging / odd proxy) |
 | — | `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus) behind `Authorization: Bearer <token>`; unset → no route |
 | — | `FFF_ERROR_WEBHOOK` | — | recovered panics POST a JSON report here (request id, path, error, stack) |
-| — | `FFF_FIREBASE_PROJECT_ID` | — | set → a "Continue with Google" button appears on `/login`; see [`docs/AUTH.md`](docs/guides/AUTH.md) |
+| — | `FFF_FIREBASE_PROJECT_ID` | — | set → a "Continue with Google" button appears on `/login`; see [`docs/guides/AUTH.md`](docs/guides/AUTH.md) |
 | — | `FFF_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_APP_ID` | — | the rest of the Firebase Web SDK config (not secrets) — needed alongside `_PROJECT_ID` |
 
 Most of these (register, Turnstile keys, webhook-allow-private, AI beta,
@@ -155,3 +158,20 @@ web/      Vite + React 19 + TS + Tailwind v4 (emerald theme)
 server/   Go — chi router, modernc.org/sqlite, argon2id + Firebase auth
 docs/     see docs/README.md — guides/, reference/, architecture/, deployment/, development/, planning/
 ```
+
+## Contributing
+
+PRs welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the dev setup, the
+pre-PR checklist, and the conventions worth knowing before you dive in. This
+is a small project maintained by one person — response time varies, but
+issues and PRs are read.
+
+Found a security issue? Please don't open a public issue — see
+[`SECURITY.md`](SECURITY.md) for private reporting.
+
+Community participation is covered by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+[MIT](LICENSE) — do what you want with it, no warranty.
