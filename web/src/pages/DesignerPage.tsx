@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { ArrowLeft, Copy, Download, FileDown, FileSearch, Save, Upload } from 'lucide-react'
+import { ArrowLeft, Copy, Download, Eye, EyeOff, FileDown, FileSearch, Save, Upload } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -72,6 +72,9 @@ export function DesignerPage() {
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
   const [preview, setPreview] = useState(false)
+  // live form panel next to Schema, in Design mode — off by default so
+  // Schema gets the full width; Fill preview already covers filling/export.
+  const [showLiveForm, setShowLiveForm] = useState(false)
   const [saveNotes, setSaveNotes] = useState('')
   const [folder, setFolder] = useState('')
   const [tagsText, setTagsText] = useState('')
@@ -467,10 +470,19 @@ export function DesignerPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className={`grid gap-5 ${showLiveForm ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
           <Card>
-            <CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Schema</CardTitle>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                onClick={() => setShowLiveForm((v) => !v)}
+                aria-pressed={showLiveForm}
+                title="Show a live form next to the schema, for quick value edits without leaving Design"
+              >
+                {showLiveForm ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                {showLiveForm ? 'Hide live form' : 'Show live form'}
+              </button>
             </CardHeader>
             <CardContent>
               <p className="mb-3 text-xs text-muted-foreground">
@@ -567,6 +579,7 @@ export function DesignerPage() {
             </CardContent>
           </Card>
 
+          {showLiveForm ? (
           <Card>
             <CardHeader>
               <CardTitle>Form</CardTitle>
@@ -641,6 +654,7 @@ export function DesignerPage() {
               ) : null}
             </CardContent>
           </Card>
+          ) : null}
         </div>
       )}
     </div>
