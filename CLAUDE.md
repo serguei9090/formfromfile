@@ -302,7 +302,15 @@ publish choice made no `/ops` call at all, so publish → restrict →
 unpublish → republish-as-anyone could silently leave a template still
 gated to `authenticated`. `validateProxy` not being gated by
 `public_access` is a known, documented non-goal (see `PLAN-F32.md`), not a
-bug. No secrets in the tree or git history.
+bug. No secrets in the tree or git history. Repo is now public at
+https://github.com/serguei9090/formfromfile.
+
+**Account-recovery CLI added** — `formfromfile user <add|ls|passwd|rm>`
+(`cmd/formfromfile/usercli.go`) manages accounts straight against the
+SQLite file, no HTTP/session needed: for when you're locked out (lost the
+only admin's password) or scripting provisioning without a running server.
+Flags must precede the positional email arg (stdlib `flag` package
+behavior) — see `docs/guides/AUTH.md` "CLI: account recovery".
 
 ## Known rough edges
 

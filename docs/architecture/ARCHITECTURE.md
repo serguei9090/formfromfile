@@ -256,6 +256,11 @@ No Radix / Base UI.
   "dist")` — only used if `dist/index.html` exists), builds the router, serves.
 - `embed.go` — `//go:embed all:dist` → `distFS`. `dist/.gitkeep` keeps the dir
   present so `go build` works in dev; F5 copies the real `web/dist` in.
+- `usercli.go` — `formfromfile user <add|ls|passwd|rm>`: account management
+  straight against the SQLite file (`store.Open` + `auth.Service`), no HTTP
+  and no session. `main()` dispatches to it before `flag.Parse()` runs so it
+  doesn't collide with the server's own flags. Exists for recovery (locked
+  out, no server running) — see `docs/guides/AUTH.md` "CLI: account recovery".
 
 ### `internal/store/`
 

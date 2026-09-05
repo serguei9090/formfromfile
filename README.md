@@ -32,6 +32,18 @@ cd web && bun install && bun run dev
 Open http://localhost:5273, register (the **first account becomes admin**), open
 the designer, paste a file, and save a form.
 
+Locked out, or no server running? Manage accounts directly against the
+SQLite file:
+
+```bash
+./fff user passwd --password NewStrongPassword123 --db formfromfile.db admin@example.com
+./fff user add --role admin --db formfromfile.db someone@example.com
+./fff user ls --db formfromfile.db
+```
+
+See [`docs/guides/AUTH.md`](docs/guides/AUTH.md) "CLI: account recovery" for
+the full command reference.
+
 ## Checks
 
 ```bash

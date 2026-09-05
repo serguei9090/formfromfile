@@ -39,6 +39,31 @@ auto-admin-if-first) — it's meant for an admin who already exists adding
 more people, not for creating the very first account. Use plain
 self-registration for that first one, as today.
 
+## CLI: account recovery / scripted provisioning
+
+Everything above needs either an admin session (Admin → Users) or a fresh
+self-registration. If you've locked yourself out — lost the only admin's
+password, or there's no server running to log into — manage accounts
+straight against the SQLite file with the binary itself:
+
+```bash
+# stop the server first if it holds the same --db file (SQLite locking)
+./fff user passwd --password NewStrongPassword123 --db formfromfile.db admin@example.com
+./fff user add --role admin --db formfromfile.db someone-else@example.com
+./fff user ls --db formfromfile.db
+./fff user rm --yes --db formfromfile.db old-account@example.com
+```
+
+Flags must come before the email argument (stdlib `flag` package stops
+parsing at the first non-flag token) — `./fff user -h` prints full usage.
+`--db` defaults to `$FFF_DB` / `formfromfile.db`, matching the server flag.
+This talks directly to the DB file, not the running server, so it needs no
+password, no session, and no server process at all — the same trust level
+as shell access to the host, which is the right level for a break-glass
+tool. `user rm` hard-deletes the account and cascades their templates and
+submissions (same as the admin GDPR-erase endpoint) and refuses to remove
+the last admin.
+
 ## How Firebase sign-in works here
 
 **No Firebase Admin SDK, no service-account key.** A Firebase ID token is a

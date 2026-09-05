@@ -24,6 +24,11 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "user" {
+		runUserCLI(os.Args[2:])
+		return
+	}
+
 	addr := flag.String("addr", envOr("FFF_ADDR", "127.0.0.1:8787"), "listen address")
 	dbPath := flag.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
 	allowRegister := flag.Bool("allow-register", envOr("FFF_ALLOW_REGISTER", "true") == "true", "allow public self-registration")
