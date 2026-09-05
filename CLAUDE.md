@@ -312,9 +312,12 @@ only admin's password) or scripting provisioning without a running server.
 Flags must precede the positional email arg (stdlib `flag` package
 behavior) — see `docs/guides/AUTH.md` "CLI: account recovery".
 
-**F33 done — optional Postgres.** `FFF_DATABASE_URL=postgres://…` (or
-`FFF_DATABASE_URL_FILE` for a secret) switches `store.Open` to Postgres;
-unset = SQLite, the default and still the recommendation for one team.
+**F33 done — optional Postgres.** `FFF_DATABASE_URL=postgres://…` (or its
+`_FILE` variant), or the discrete `FFF_DB_HOST`/`_PORT`/`_NAME`/`_USER`/
+`_PASSWORD`(+`_FILE`)/`_SSLMODE` vars (assembled into a URL in
+`resolveDBTarget`, password percent-escaped), switches `store.Open` to
+Postgres; none set = SQLite, the default and still the recommendation for
+one team.
 `internal/store/postgres.go`: a `database/sql` driver wrapper rewrites `?`
 → `$N` so every existing query runs unchanged; `pgDDL` widens
 `INTEGER`→`BIGINT` (unix-millis timestamps) and swaps the v3

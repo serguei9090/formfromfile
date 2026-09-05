@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -162,24 +163,56 @@ func registerMetrics(st *store.Store, dbTarget string) {
 	}
 }
 
-// resolveDBTarget picks the database target: FFF_DATABASE_URL_FILE (contents
-// of the named file, for Docker/k8s secrets), else FFF_DATABASE_URL, else the
-// --db / FFF_DB SQLite path.
+// resolveDBTarget picks the database target, in precedence order:
+//  1. FFF_DATABASE_URL (or FFF_DATABASE_URL_FILE) — a full connection URL.
+//  2. FFF_DB_HOST + friends — discrete parts, assembled into a postgres URL
+//     with proper escaping. The production-friendly path: each field, and
+//     the password especially, can come from its own secret.
+//  3. the --db / FFF_DB SQLite path (the default).
 func resolveDBTarget(dbFlag string) string {
-	if f := os.Getenv("FFF_DATABASE_URL_FILE"); f != "" {
-		b, err := os.ReadFile(f)
-		if err != nil {
-			slog.Error("read FFF_DATABASE_URL_FILE", "path", f, "err", err)
-			os.Exit(1)
-		}
-		if v := strings.TrimSpace(string(b)); v != "" {
-			return v
-		}
+	if v := envOrFile("FFF_DATABASE_URL"); v != "" {
+		return v
 	}
-	if u := strings.TrimSpace(os.Getenv("FFF_DATABASE_URL")); u != "" {
-		return u
+	if host := os.Getenv("FFF_DB_HOST"); host != "" {
+		return assemblePostgresURL(host)
 	}
 	return dbFlag
+}
+
+// assemblePostgresURL builds a postgres:// URL from the discrete FFF_DB_*
+// vars. url.URL handles percent-escaping, so a password with @ / : # etc.
+// works without the caller quoting anything.
+func assemblePostgresURL(host string) string {
+	u := url.URL{
+		Scheme: "postgres",
+		Host:   net.JoinHostPort(host, envOr("FFF_DB_PORT", "5432")),
+		Path:   "/" + envOr("FFF_DB_NAME", "formfromfile"),
+	}
+	if user := os.Getenv("FFF_DB_USER"); user != "" {
+		if pw := envOrFile("FFF_DB_PASSWORD"); pw != "" {
+			u.User = url.UserPassword(user, pw)
+		} else {
+			u.User = url.User(user)
+		}
+	}
+	q := url.Values{}
+	q.Set("sslmode", envOr("FFF_DB_SSLMODE", "require"))
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+// envOrFile returns the contents of $<name>_FILE if that points at a file
+// (for Docker/k8s secrets), else the trimmed value of $<name>, else "".
+func envOrFile(name string) string {
+	if f := os.Getenv(name + "_FILE"); f != "" {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			slog.Error("read "+name+"_FILE", "path", f, "err", err)
+			os.Exit(1)
+		}
+		return strings.TrimSpace(string(b))
+	}
+	return strings.TrimSpace(os.Getenv(name))
 }
 
 // startRetentionSweep runs an hourly pass that deletes submissions past their

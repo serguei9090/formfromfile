@@ -57,15 +57,10 @@ running, and no admin session is required. --db defaults to $FFF_DB or
 `)
 }
 
-// cliDBDefault mirrors the server's precedence: FFF_DATABASE_URL over FFF_DB
-// over the default SQLite filename. (FFF_DATABASE_URL_FILE is a server-side
-// secret-mounting convenience; the CLI is a local recovery tool.)
-func cliDBDefault() string {
-	if u := envOr("FFF_DATABASE_URL", ""); u != "" {
-		return u
-	}
-	return envOr("FFF_DB", "formfromfile.db")
-}
+// cliDBDefault is the same precedence the server uses (FFF_DATABASE_URL /
+// FFF_DB_HOST discrete vars / FFF_DB path), so `formfromfile user …` targets
+// whatever the server targets.
+func cliDBDefault() string { return resolveDBTarget(envOr("FFF_DB", "formfromfile.db")) }
 
 func openStoreFlag(fs *flag.FlagSet) *store.Store {
 	target := fs.Lookup("db").Value.String()

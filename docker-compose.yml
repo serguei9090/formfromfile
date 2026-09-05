@@ -11,10 +11,16 @@ services:
     restart: unless-stopped
     environment:
       FFF_ADDR: 0.0.0.0:8787
-      # SQLite by default. To use the optional `db` service below, set
-      # FFF_DATABASE_URL in .env (or FFF_DATABASE_URL_FILE for a secret).
+      # SQLite by default. For the optional `db` service below, set the
+      # FFF_DB_* vars in .env (or a full FFF_DATABASE_URL). Precedence:
+      # FFF_DATABASE_URL > FFF_DB_HOST (discrete) > FFF_DB (SQLite path).
       FFF_DB: /data/formfromfile.db
       FFF_DATABASE_URL: "${FFF_DATABASE_URL:-}"
+      FFF_DB_HOST: "${FFF_DB_HOST:-}"
+      FFF_DB_NAME: "${FFF_DB_NAME:-}"
+      FFF_DB_USER: "${FFF_DB_USER:-}"
+      FFF_DB_PASSWORD: "${FFF_DB_PASSWORD:-}"
+      FFF_DB_SSLMODE: "${FFF_DB_SSLMODE:-disable}"
       # set false once your admin account exists, then create users from /admin
       FFF_ALLOW_REGISTER: "${FFF_ALLOW_REGISTER:-true}"
       # honour X-Forwarded-For — Caddy sets it, and nothing else can reach :8787
@@ -38,22 +44,24 @@ services:
     # no host ports — only Caddy talks to the app, over the compose network
     # depends_on: [db]   # uncomment if you enable the db service below
 
-  # Optional Postgres. Uncomment this service, uncomment app.depends_on above,
-  # and set in .env:
-  #   FFF_DATABASE_URL=postgres://fff:CHANGE_ME@db:5432/fff?sslmode=disable
-  # (sslmode=disable is fine here — the connection never leaves the compose
-  # network. Use require/verify-full for an external Postgres.)
+  # Optional Postgres. Uncomment this service + app.depends_on above, and set
+  # in .env (sslmode=disable is fine here — traffic stays on the compose
+  # network; use require/verify-full for an external DB):
+  #   FFF_DB_HOST=db
+  #   FFF_DB_NAME=fff
+  #   FFF_DB_USER=fff
+  #   FFF_DB_PASSWORD=CHANGE_ME     # must match POSTGRES_PASSWORD below
   # db:
   #   image: postgres:16-alpine
   #   restart: unless-stopped
   #   environment:
-  #     POSTGRES_USER: fff
-  #     POSTGRES_PASSWORD: CHANGE_ME       # match FFF_DATABASE_URL
-  #     POSTGRES_DB: fff
+  #     POSTGRES_USER: "${FFF_DB_USER:-fff}"
+  #     POSTGRES_PASSWORD: "${FFF_DB_PASSWORD:?set FFF_DB_PASSWORD in .env}"
+  #     POSTGRES_DB: "${FFF_DB_NAME:-fff}"
   #   volumes:
   #     - fff-pg:/var/lib/postgresql/data
   #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U fff"]
+  #     test: ["CMD-SHELL", "pg_isready -U ${FFF_DB_USER:-fff}"]
   #     interval: 5s
   #     timeout: 3s
   #     retries: 10

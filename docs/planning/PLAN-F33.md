@@ -177,10 +177,12 @@ One commit. `FFF_DATABASE_URL=postgres://…` (or `_FILE`) switches
 - **`PurgeExpiredSubmissions`** — rewritten `created_at + window < now`
   instead of `now - window` so both placeholders have a type context
   (Postgres rejects bare `? - ?`).
-- **`cmd/formfromfile`** — `resolveDBTarget` (`FFF_DATABASE_URL_FILE` ›
-  `FFF_DATABASE_URL` › `--db`); startup log + CLI errors go through
-  `RedactDSN`; `fff_db_bytes` gauge skipped on Postgres; `user` CLI honours
-  the URL.
+- **`cmd/formfromfile`** — `resolveDBTarget`: `FFF_DATABASE_URL` (+ `_FILE`)
+  › discrete `FFF_DB_HOST` / `_PORT` / `_NAME` / `_USER` / `_PASSWORD`
+  (+ `_FILE`) / `_SSLMODE`, assembled into a URL with `net/url` (password
+  percent-escaped) › `--db` SQLite path. Startup log + CLI errors go through
+  `RedactDSN`; `fff_db_bytes` gauge skipped on Postgres; `user` CLI reads the
+  same vars. `TestResolveDBTarget` covers the precedence + escaping.
 - **Tests** — `store` + `auth` harnesses open `TEST_DATABASE_URL` (public
   schema wiped per test) when set. CI `server` job gains a `postgres:16`
   service and a second `go test -p 1 ./internal/store/... ./internal/auth/...`
