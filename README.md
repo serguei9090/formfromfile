@@ -13,6 +13,10 @@ format.
 A standalone spin-out of **InfraKit Studio**'s FormFlow module, with multi-user
 accounts, per-user saved forms, and publishable shareable forms.
 
+![Demo: detect a schema, toggle a live form preview, publish, fill, and review a submission](docs/assets/demo.gif)
+
+<sup>Full-resolution video: [`docs/assets/demo.mp4`](docs/assets/demo.mp4).</sup>
+
 - **Web only** — a static SPA (`web/`) + a Go backend (`server/`). No desktop build.
 - **Multi-user** — register / login (argon2id) or Google sign-in (Firebase),
   admin-provisioned accounts, per-user schemas stored server-side.
@@ -146,6 +150,25 @@ how to add things) is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
 - **Ops hardening** — SSRF-guarded outbound requests (webhooks, async
   checks), Cloudflare Turnstile on public forms, structured JSON logging,
   per-IP rate limits, security headers + CSP, Prometheus metrics.
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/screenshot-designer-schema.png" alt="Designer: detected schema, full width"></td>
+<td width="50%"><img src="docs/assets/screenshot-designer-live-form.png" alt="Designer: live form toggled on next to the schema"></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/screenshot-fill-preview.png" alt="Fill preview — exactly what a filler sees"></td>
+<td width="50%"><img src="docs/assets/screenshot-submissions.png" alt="Submissions: review, CSV/ZIP export, access controls"></td>
+</tr>
+</table>
+
+Regenerate these (and the demo GIF/MP4) after a UI change with `bun run demo`
+(from `web/`) — a headless Playwright script that walks the real
+detect → publish → fill → submit lifecycle against a throwaway DB and
+encodes the recording via `ffmpeg`. See
+[`web/e2e-demo/capture-demo.spec.ts`](web/e2e-demo/capture-demo.spec.ts).
 
 ## Layout
 

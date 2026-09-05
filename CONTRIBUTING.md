@@ -35,6 +35,11 @@ PR — type-checking and unit tests verify correctness, not that the feature
 works. `bun run e2e` runs the Playwright suite (`web/e2e/`) if your change
 touches a flow that's covered there.
 
+If your change is visible in the README's screenshots/demo GIF, regenerate
+them: `bun run demo` (from `web/`) drives a headless browser through the
+real detect → publish → fill → submit lifecycle and re-encodes
+`docs/assets/*.png`/`demo.gif`/`demo.mp4` via `ffmpeg` (must be on `PATH`).
+
 ## Conventions worth knowing before you dive in
 
 - `web/src/core/form_flow/**` is a **verbatim port** from a sibling project

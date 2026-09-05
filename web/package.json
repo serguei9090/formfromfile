@@ -9,6 +9,9 @@
     "lint": "oxlint",
     "test": "vitest run",
     "e2e": "playwright test",
+    "demo:capture": "playwright test --config=playwright.demo.config.ts",
+    "demo:gif": "node scripts/make-demo-gif.mjs",
+    "demo": "bun run demo:capture && bun run demo:gif",
     "preview": "vite preview"
   },
   "dependencies": {
