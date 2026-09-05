@@ -2,15 +2,34 @@ package auth
 
 import (
 	"context"
+	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/serguei9090/formfromfile/internal/store"
 )
 
+// newTestService opens a store — a temp SQLite file, or the Postgres at
+// TEST_DATABASE_URL (public schema wiped first) so the last-admin guard
+// changes get exercised against both backends.
 func newTestService(t *testing.T) *Service {
 	t.Helper()
-	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	target := filepath.Join(t.TempDir(), "t.db")
+	if u := os.Getenv("TEST_DATABASE_URL"); u != "" && store.IsPostgresDSN(u) {
+		db, err := sql.Open(store.PGDriverName, u)
+		if err != nil {
+			t.Fatalf("connect TEST_DATABASE_URL: %v", err)
+		}
+		for _, q := range []string{`DROP SCHEMA IF EXISTS public CASCADE`, `CREATE SCHEMA public`} {
+			if _, err := db.Exec(q); err != nil {
+				t.Fatalf("wipe public schema: %v", err)
+			}
+		}
+		db.Close()
+		target = u
+	}
+	st, err := store.Open(target)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

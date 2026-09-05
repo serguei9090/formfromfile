@@ -63,7 +63,9 @@ cd server && go build ./... && go vet ./... && go test ./...
 | flag | env | default | meaning |
 |------|-----|---------|---------|
 | `--addr` | `FFF_ADDR` | `127.0.0.1:8787` | listen address |
-| `--db` | `FFF_DB` | `formfromfile.db` | SQLite file path |
+| `--db` | `FFF_DB` | `formfromfile.db` | SQLite file path (used when `FFF_DATABASE_URL` is unset) |
+| — | `FFF_DATABASE_URL` | — | `postgres://…` URL → use Postgres instead of SQLite. The app creates its own tables. `sslmode=require` for a remote host. See [`docs/deployment/SCALE.md`](docs/deployment/SCALE.md) |
+| — | `FFF_DATABASE_URL_FILE` | — | path to a file holding the URL (Docker/k8s secrets) — keeps the password out of the process env |
 | `--allow-register` | `FFF_ALLOW_REGISTER` | `true` | public self-registration (bootstrap admin always allowed) — set `false` once your admin exists |
 | — | `FFF_TRUST_PROXY` | — | `true` to key rate-limits off `X-Forwarded-For` / `X-Real-IP` — **only** behind a proxy that overwrites them (Caddy/nginx/Cloudflare) |
 | — | `FFF_LOG_FORMAT` | text | `json` for one structured line per request (id, status, dur, ip); `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error` |

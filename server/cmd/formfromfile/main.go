@@ -30,7 +30,7 @@ func main() {
 	}
 
 	addr := flag.String("addr", envOr("FFF_ADDR", "127.0.0.1:8787"), "listen address")
-	dbPath := flag.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
+	dbPath := flag.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path (ignored if FFF_DATABASE_URL is set)")
 	allowRegister := flag.Bool("allow-register", envOr("FFF_ALLOW_REGISTER", "true") == "true", "allow public self-registration")
 	healthcheck := flag.Bool("healthcheck", false, "probe the local server's /healthz and exit 0/1 (for Docker HEALTHCHECK)")
 	flag.Parse()
@@ -41,9 +41,14 @@ func main() {
 
 	setupLogging()
 
-	st, err := store.Open(*dbPath)
+	// FFF_DATABASE_URL (or *_FILE, for Docker/k8s secrets) wins over --db /
+	// FFF_DB. A "postgres://…" value selects Postgres; anything else is a
+	// SQLite file path. Unset → SQLite at --db, exactly as before.
+	dbTarget := resolveDBTarget(*dbPath)
+
+	st, err := store.Open(dbTarget)
 	if err != nil {
-		slog.Error("open db", "err", err)
+		slog.Error("open db", "err", err, "db", store.RedactDSN(dbTarget))
 		os.Exit(1)
 	}
 	defer st.Close()
@@ -60,7 +65,7 @@ func main() {
 	}
 
 	aiSvc := ai.New()
-	registerMetrics(st, *dbPath)
+	registerMetrics(st, dbTarget)
 	startRetentionSweep(st)
 
 	// Firebase sign-in (Google / Firebase email) is off unless a project id
@@ -100,7 +105,7 @@ func main() {
 	}
 	n, _ := st.CountUsers()
 	slog.Info("listening",
-		"addr", *addr, "db", *dbPath, "users", n,
+		"addr", *addr, "db", store.RedactDSN(dbTarget), "users", n,
 		"register", *allowRegister, "spa", staticFS != nil, "ai", aiSvc.Enabled(),
 		"firebase", fbVerifier != nil)
 	if err := srv.ListenAndServe(); err != nil {
@@ -134,7 +139,7 @@ func setupLogging() {
 
 // registerMetrics wires the scrape-time gauges. Counters/histograms register
 // themselves in the metrics package.
-func registerMetrics(st *store.Store, dbPath string) {
+func registerMetrics(st *store.Store, dbTarget string) {
 	metrics.R.Gauge("fff_users_total", "Registered accounts.", func() float64 {
 		return float64(st.UsersTotal())
 	})
@@ -144,13 +149,37 @@ func registerMetrics(st *store.Store, dbPath string) {
 	metrics.R.Gauge("fff_submissions_total", "Stored submissions.", func() float64 {
 		return float64(st.SubmissionsTotal())
 	})
-	metrics.R.Gauge("fff_db_bytes", "SQLite database file size in bytes.", func() float64 {
-		fi, err := os.Stat(dbPath)
+	// fff_db_bytes is the SQLite file size — meaningless for Postgres, so skip
+	// the gauge entirely on that path rather than report a bogus 0.
+	if !store.IsPostgresDSN(dbTarget) {
+		metrics.R.Gauge("fff_db_bytes", "SQLite database file size in bytes.", func() float64 {
+			fi, err := os.Stat(dbTarget)
+			if err != nil {
+				return 0
+			}
+			return float64(fi.Size())
+		})
+	}
+}
+
+// resolveDBTarget picks the database target: FFF_DATABASE_URL_FILE (contents
+// of the named file, for Docker/k8s secrets), else FFF_DATABASE_URL, else the
+// --db / FFF_DB SQLite path.
+func resolveDBTarget(dbFlag string) string {
+	if f := os.Getenv("FFF_DATABASE_URL_FILE"); f != "" {
+		b, err := os.ReadFile(f)
 		if err != nil {
-			return 0
+			slog.Error("read FFF_DATABASE_URL_FILE", "path", f, "err", err)
+			os.Exit(1)
 		}
-		return float64(fi.Size())
-	})
+		if v := strings.TrimSpace(string(b)); v != "" {
+			return v
+		}
+	}
+	if u := strings.TrimSpace(os.Getenv("FFF_DATABASE_URL")); u != "" {
+		return u
+	}
+	return dbFlag
 }
 
 // startRetentionSweep runs an hourly pass that deletes submissions past their

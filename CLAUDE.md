@@ -312,6 +312,25 @@ only admin's password) or scripting provisioning without a running server.
 Flags must precede the positional email arg (stdlib `flag` package
 behavior) — see `docs/guides/AUTH.md` "CLI: account recovery".
 
+**F33 done — optional Postgres.** `FFF_DATABASE_URL=postgres://…` (or
+`FFF_DATABASE_URL_FILE` for a secret) switches `store.Open` to Postgres;
+unset = SQLite, the default and still the recommendation for one team.
+`internal/store/postgres.go`: a `database/sql` driver wrapper rewrites `?`
+→ `$N` so every existing query runs unchanged; `pgDDL` widens
+`INTEGER`→`BIGINT` (unix-millis timestamps) and swaps the v3
+`hex(randomblob())` id expr; `schema_migrations` table replaces `PRAGMA
+user_version`. `store.IsUniqueViolation` (SQLite msg or pg SQLSTATE 23505).
+Last-admin guards (`SetUserDisabled`/`SetUserRole` in `users_guard.go`,
+`EraseUser`) now count-then-write in a tx with `SELECT … FOR UPDATE`
+(`s.forUpdate` is `""` on SQLite); `auth.Service` delegates. Also fixed:
+`SessionsActive` compared millis to `strftime('%s')` seconds;
+`PurgeExpiredSubmissions` used a bare `? - ?` pg rejects. `store` + `auth`
+tests run a second CI pass against `postgres:16` (`TEST_DATABASE_URL`,
+`-p 1`). `httpapi` tests stay SQLite-only. Deferred: submission-cap
+enforcement is still check-then-act (can overshoot by a few on pg under a
+burst); no SQLite→pg data migration tool. See
+[`PLAN-F33.md`](docs/planning/PLAN-F33.md).
+
 ## Known rough edges
 
 - Retype re-seeds only the branch whose shape changed (F9 `reseedPreserving`) —

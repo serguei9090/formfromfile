@@ -49,7 +49,9 @@ docker run -d --name fff \
 | env | default | meaning |
 |-----|---------|---------|
 | `FFF_ADDR` | `0.0.0.0:8787` | listen address (leave as-is in the container) |
-| `FFF_DB` | `/data/formfromfile.db` | SQLite path — keep it on the volume |
+| `FFF_DB` | `/data/formfromfile.db` | SQLite path — keep it on the volume (used when `FFF_DATABASE_URL` is unset) |
+| `FFF_DATABASE_URL` | — | `postgres://…` URL → Postgres instead of SQLite (see §Postgres below). Unset = SQLite, the default. |
+| `FFF_DATABASE_URL_FILE` | — | a file path whose contents are the URL — for Docker/k8s secrets, so the password is never a process env var |
 | `FFF_ALLOW_REGISTER` | `true` | set `false` after the first admin signs up, then create users from `/admin` |
 | `FFF_TRUST_PROXY` | — | `true` to read `X-Forwarded-For` / `X-Real-IP` for rate-limit keys. **Only** behind a proxy that overwrites those headers (Caddy/nginx/Cloudflare) — otherwise clients spoof their IP. |
 | `FFF_LOG_FORMAT` | text | `json` for structured lines (one per request: id, status, dur, ip). `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error`. |
@@ -78,6 +80,34 @@ over the env var; "reset" drops it and the env/default applies again. The env
 vars are still the right way to seed a fresh deploy and to keep secrets out of
 the database UI where possible (the Turnstile secret, if set via the panel, is
 stored but never shown back).
+
+### Postgres (optional)
+
+SQLite is the default and is right for a single team (see
+[`SCALE.md`](SCALE.md)). Point `FFF_DATABASE_URL` at a Postgres to use that
+instead — the app creates its own tables and runs its migrations on first
+boot, same as it does for SQLite. No data migration path from an existing
+SQLite file is provided; adopters start fresh (or use `pgloader`).
+
+```bash
+# external Postgres
+FFF_DATABASE_URL=postgres://fff:PW@db.internal:5432/fff?sslmode=require
+
+# or the bundled db service — uncomment `db:` in docker-compose.yml, then:
+FFF_DATABASE_URL=postgres://fff:CHANGE_ME@db:5432/fff?sslmode=disable
+```
+
+- **Keep the password out of the repo and the env.** In compose it comes from
+  the gitignored `.env` (`FFF_DATABASE_URL: "${FFF_DATABASE_URL:-}"`). Better:
+  a Docker/k8s secret file and `FFF_DATABASE_URL_FILE=/run/secrets/…`.
+- `sslmode=require` (or `verify-full` with a CA) for anything not on a private
+  network. `sslmode=disable` is only OK for a same-host / same-compose-network
+  DB.
+- The startup log and CLI redact the URL to `postgres://host/db` — the
+  password is never logged.
+- Any currently-supported Postgres (tested against 16). No extensions needed.
+- `fff_db_bytes` (the SQLite file-size gauge) is not emitted on Postgres.
+- `formfromfile user …` (the recovery CLI) also honours `FFF_DATABASE_URL`.
 
 ---
 

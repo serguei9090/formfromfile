@@ -67,7 +67,7 @@ func (s *Service) Register(email, pw string) (User, error) {
 		u.ID, u.Email, u.passwordHash, string(u.Role), u.CreatedAt,
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if store.IsUniqueViolation(err) {
 			return User{}, ErrTaken
 		}
 		return User{}, err
@@ -108,7 +108,7 @@ func (s *Service) CreateUser(email, pw string, role Role) (u User, generatedPass
 		u.ID, u.Email, u.passwordHash, string(u.Role), u.CreatedAt,
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if store.IsUniqueViolation(err) {
 			return User{}, "", ErrTaken
 		}
 		return User{}, "", err
@@ -206,7 +206,7 @@ func (s *Service) LoginOrProvisionFirebase(uid, email string) (token string, u U
 			u.ID, u.Email, "", string(u.Role), uid, u.CreatedAt,
 		)
 		if err != nil {
-			if strings.Contains(err.Error(), "UNIQUE") {
+			if store.IsUniqueViolation(err) {
 				return "", User{}, ErrTaken
 			}
 			return "", User{}, err
@@ -291,48 +291,34 @@ func (s *Service) ListUsers() ([]User, error) {
 	return out, rows.Err()
 }
 
-// SetDisabled enables/disables an account. Refuses to disable the last admin.
+// SetDisabled enables/disables an account. Refuses to disable the last active
+// admin; disabling also revokes the account's sessions. The read + write run
+// in one transaction (store.SetUserDisabled) so concurrent callers on
+// Postgres can't both step past the guard.
 func (s *Service) SetDisabled(id string, disabled bool) error {
-	u, err := s.userByID(id)
-	if err != nil {
-		return err
+	err := s.st.SetUserDisabled(id, disabled)
+	if errors.Is(err, store.ErrNotFound) {
+		return ErrNotFound
 	}
-	if disabled && u.IsAdmin() {
-		var admins int
-		_ = s.st.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE role = 'admin' AND disabled = 0`).Scan(&admins)
-		if admins <= 1 {
-			return ErrLastAdmin
-		}
-	}
-	b := 0
-	if disabled {
-		b = 1
-	}
-	_, err = s.st.DB.Exec(`UPDATE users SET disabled = ? WHERE id = ?`, b, id)
-	if err == nil && disabled {
-		_, _ = s.st.DB.Exec(`DELETE FROM sessions WHERE user_id = ?`, id)
+	if errors.Is(err, store.ErrLastAdmin) {
+		return ErrLastAdmin
 	}
 	return err
 }
 
 // SetRole changes an account's role (admin only). Refuses to demote the last
-// admin.
+// active admin. Guard + write are transactional (store.SetUserRole).
 func (s *Service) SetRole(id string, role Role) error {
 	if !ValidRole(role) {
 		return ErrInvalidRole
 	}
-	u, err := s.userByID(id)
-	if err != nil {
-		return err
+	err := s.st.SetUserRole(id, string(role))
+	if errors.Is(err, store.ErrNotFound) {
+		return ErrNotFound
 	}
-	if u.IsAdmin() && role != RoleAdmin {
-		var admins int
-		_ = s.st.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE role = 'admin' AND disabled = 0`).Scan(&admins)
-		if admins <= 1 {
-			return ErrLastAdmin
-		}
+	if errors.Is(err, store.ErrLastAdmin) {
+		return ErrLastAdmin
 	}
-	_, err = s.st.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, string(role), id)
 	return err
 }
 

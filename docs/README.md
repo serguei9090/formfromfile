@@ -57,7 +57,7 @@ you're picking up an in-progress thread or curious about a past decision's
 - [`planning/PLAN-F32.md`](planning/PLAN-F32.md) — F32 (admin-provisioned
   users, per-template auth gate)
 - [`planning/PLAN-F33.md`](planning/PLAN-F33.md) — F33 (optional Postgres
-  backend — scoped, not yet built)
+  backend via `FFF_DATABASE_URL`)
 
 See also [`../CHANGELOG.md`](../CHANGELOG.md) for the release-notes view of
 the same history, and [`../CLAUDE.md`](../CLAUDE.md) for the standing

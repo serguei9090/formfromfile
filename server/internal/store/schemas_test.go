@@ -1,13 +1,24 @@
 package store
 
 import (
+	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 )
 
+// newTestStore opens a fresh store. Against SQLite that's a temp file. If
+// TEST_DATABASE_URL points at a Postgres, it wipes and rebuilds the public
+// schema there instead, so `go test ./internal/store` exercises both backends
+// (CI runs it a second time with the var set).
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
-	st, err := Open(filepath.Join(t.TempDir(), "t.db"))
+	target := filepath.Join(t.TempDir(), "t.db")
+	if u := os.Getenv("TEST_DATABASE_URL"); u != "" && IsPostgresDSN(u) {
+		wipePostgres(t, u)
+		target = u
+	}
+	st, err := Open(target)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -19,6 +30,22 @@ func newTestStore(t *testing.T) *Store {
 		t.Fatal(err)
 	}
 	return st
+}
+
+// wipePostgres drops and recreates the public schema so each test starts
+// clean (a Postgres DB is shared across tests, unlike a per-test temp file).
+func wipePostgres(t *testing.T, url string) {
+	t.Helper()
+	db, err := sql.Open(PGDriverName, url)
+	if err != nil {
+		t.Fatalf("connect TEST_DATABASE_URL: %v", err)
+	}
+	defer db.Close()
+	for _, q := range []string{`DROP SCHEMA IF EXISTS public CASCADE`, `CREATE SCHEMA public`} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("wipe public schema: %v", err)
+		}
+	}
 }
 
 func TestSchemaCRUDScoped(t *testing.T) {

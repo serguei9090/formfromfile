@@ -57,11 +57,21 @@ running, and no admin session is required. --db defaults to $FFF_DB or
 `)
 }
 
+// cliDBDefault mirrors the server's precedence: FFF_DATABASE_URL over FFF_DB
+// over the default SQLite filename. (FFF_DATABASE_URL_FILE is a server-side
+// secret-mounting convenience; the CLI is a local recovery tool.)
+func cliDBDefault() string {
+	if u := envOr("FFF_DATABASE_URL", ""); u != "" {
+		return u
+	}
+	return envOr("FFF_DB", "formfromfile.db")
+}
+
 func openStoreFlag(fs *flag.FlagSet) *store.Store {
-	dbPath := fs.Lookup("db").Value.String()
-	st, err := store.Open(dbPath)
+	target := fs.Lookup("db").Value.String()
+	st, err := store.Open(target)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "open db %s: %v\n", dbPath, err)
+		fmt.Fprintf(os.Stderr, "open db %s: %v\n", store.RedactDSN(target), err)
 		os.Exit(1)
 	}
 	return st
@@ -69,7 +79,7 @@ func openStoreFlag(fs *flag.FlagSet) *store.Store {
 
 func cmdUserAdd(args []string) {
 	fs := flag.NewFlagSet("user add", flag.ExitOnError)
-	fs.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
+	fs.String("db", cliDBDefault(), "SQLite path, or set FFF_DATABASE_URL for Postgres")
 	password := fs.String("password", "", "password (blank = generate one and print it once)")
 	role := fs.String("role", "user", "admin | author | user")
 	_ = fs.Parse(args)
@@ -96,7 +106,7 @@ func cmdUserAdd(args []string) {
 
 func cmdUserList(args []string) {
 	fs := flag.NewFlagSet("user ls", flag.ExitOnError)
-	fs.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
+	fs.String("db", cliDBDefault(), "SQLite path, or set FFF_DATABASE_URL for Postgres")
 	_ = fs.Parse(args)
 
 	st := openStoreFlag(fs)
@@ -119,7 +129,7 @@ func cmdUserList(args []string) {
 
 func cmdUserPasswd(args []string) {
 	fs := flag.NewFlagSet("user passwd", flag.ExitOnError)
-	fs.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
+	fs.String("db", cliDBDefault(), "SQLite path, or set FFF_DATABASE_URL for Postgres")
 	password := fs.String("password", "", "new password (required, min 10 chars)")
 	_ = fs.Parse(args)
 	if fs.NArg() != 1 || *password == "" {
@@ -146,7 +156,7 @@ func cmdUserPasswd(args []string) {
 
 func cmdUserRemove(args []string) {
 	fs := flag.NewFlagSet("user rm", flag.ExitOnError)
-	fs.String("db", envOr("FFF_DB", "formfromfile.db"), "SQLite database path")
+	fs.String("db", cliDBDefault(), "SQLite path, or set FFF_DATABASE_URL for Postgres")
 	yes := fs.Bool("yes", false, "skip confirmation")
 	_ = fs.Parse(args)
 	if fs.NArg() != 1 {

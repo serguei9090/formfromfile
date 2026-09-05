@@ -55,25 +55,28 @@ func (s *Store) PurgeExpiredSubmissions(defaultDays int) (int64, error) {
 	now := time.Now().UnixMilli()
 	dayMS := int64(86400000)
 
-	// per-template windows
+	// per-template windows. Written as `created_at + window < now` rather than
+	// `created_at < now - window` so both placeholders have a type context —
+	// Postgres rejects a bare `? - ?` (unknown - unknown) at parse time.
 	res, err := s.DB.Exec(`
 		DELETE FROM submissions
-		WHERE created_at < ? - (
+		WHERE (SELECT retention_days FROM schemas WHERE schemas.id = submissions.template_id) > 0
+		AND created_at + (
 		  (SELECT retention_days FROM schemas WHERE schemas.id = submissions.template_id) * ?
-		)
-		AND (SELECT retention_days FROM schemas WHERE schemas.id = submissions.template_id) > 0`,
-		now, dayMS)
+		) < ?`,
+		dayMS, now)
 	if err != nil {
 		return 0, err
 	}
 	n, _ := res.RowsAffected()
 
 	if defaultDays > 0 {
+		cutoff := now - int64(defaultDays)*dayMS
 		res, err = s.DB.Exec(`
 			DELETE FROM submissions
-			WHERE created_at < ? - ?
+			WHERE created_at < ?
 			AND COALESCE((SELECT retention_days FROM schemas WHERE schemas.id = submissions.template_id), 0) = 0`,
-			now, int64(defaultDays)*dayMS)
+			cutoff)
 		if err != nil {
 			return n, err
 		}
@@ -156,23 +159,37 @@ func (s *Store) querySubs(whereClause string, args ...any) ([]Submission, error)
 // their authorship on comments / audit rows / submissions they filled
 // elsewhere. Refuses to remove the last admin.
 func (s *Store) EraseUser(id string) error {
-	var role string
-	err := s.DB.QueryRow(`SELECT role FROM users WHERE id = ?`, id).Scan(&role)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
-	}
-	if err != nil {
-		return err
-	}
-	if role == "admin" {
-		var admins int
-		_ = s.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE role = 'admin'`).Scan(&admins)
-		if admins <= 1 {
-			return ErrLastAdmin
+	// read-then-delete in one transaction, locking the admin rows on Postgres
+	// (see users_guard.go) so two concurrent erases can't both drop the last.
+	return s.tx(func(tx *sql.Tx) error {
+		var role string
+		err := tx.QueryRow(`SELECT role FROM users WHERE id = ?`, id).Scan(&role)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
 		}
-	}
-	_, err = s.DB.Exec(`DELETE FROM users WHERE id = ?`, id)
-	return err
+		if err != nil {
+			return err
+		}
+		if role == "admin" {
+			rows, err := tx.Query(`SELECT 1 FROM users WHERE role = 'admin'` + s.forUpdate)
+			if err != nil {
+				return err
+			}
+			admins := 0
+			for rows.Next() {
+				admins++
+			}
+			rows.Close()
+			if err := rows.Err(); err != nil {
+				return err
+			}
+			if admins <= 1 {
+				return ErrLastAdmin
+			}
+		}
+		_, err = tx.Exec(`DELETE FROM users WHERE id = ?`, id)
+		return err
+	})
 }
 
 // ErrLastAdmin mirrors auth.ErrLastAdmin for the store-level guard.

@@ -1,9 +1,12 @@
-// Package store is the SQLite persistence layer for FormFromFile.
+// Package store is the persistence layer for FormFromFile. SQLite by default
+// (embedded, pure-Go); Postgres when FFF_DATABASE_URL is a postgres:// URL
+// (see postgres.go).
 package store
 
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -189,12 +192,25 @@ func migrate(db *sql.DB) error {
 	return nil
 }
 
-// Store wraps the database handle.
-type Store struct{ DB *sql.DB }
+// Store wraps the database handle. forUpdate is " FOR UPDATE" on Postgres and
+// "" on SQLite (where the single-writer connection already serializes writes)
+// — appended to the last-admin guard reads in users_guard.go.
+type Store struct {
+	DB        *sql.DB
+	forUpdate string
+}
 
-// Open opens (creating if needed) the SQLite database at dsn and applies the
-// schema.
-func Open(dsn string) (*Store, error) {
+// Open opens the database at target and applies the schema + migrations.
+// target is a SQLite file path by default; a "postgres://…" / "postgresql://…"
+// URL selects Postgres instead (see postgres.go).
+func Open(target string) (*Store, error) {
+	if IsPostgresDSN(target) {
+		return openPostgres(target)
+	}
+	return openSQLite(target)
+}
+
+func openSQLite(dsn string) (*Store, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
@@ -250,6 +266,9 @@ func (s *Store) UsersTotal() int       { return s.countOf("users") }
 func (s *Store) SubmissionsTotal() int { return s.countOf("submissions") }
 func (s *Store) SessionsActive() int {
 	var n int
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM sessions WHERE expires_at > strftime('%s','now')`).Scan(&n)
+	// expires_at is stored as unix millis (see auth.issueSession); compare
+	// against millis, not strftime('%s') seconds — that also keeps this
+	// portable to Postgres.
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM sessions WHERE expires_at > ?`, time.Now().UnixMilli()).Scan(&n)
 	return n
 }

@@ -148,3 +148,52 @@ these still hand the app an env var or a file — the app side is the same.
 
 Estimate: 1–2 focused days. Ships behind an unset env var — zero risk to
 existing SQLite deployments until someone sets `FFF_DATABASE_URL`.
+
+---
+
+## Progress — done
+
+One commit. `FFF_DATABASE_URL=postgres://…` (or `_FILE`) switches
+`store.Open` to Postgres; unset = SQLite, unchanged.
+
+- **`internal/store/postgres.go`** — a `database/sql` driver wrapper
+  (`pgx-rebind`) that rewrites `?` → `$N` on every statement, so all ~90 DB
+  call sites and the 3 existing `tx` blocks run unchanged. `pgDDL` adapts DDL
+  (`INTEGER`→`BIGINT`; the v3 `lower(hex(randomblob()))` → `md5(random()…)`).
+  `splitStatements` runs multi-statement migration strings one at a time
+  (pgx extended protocol rejects batched statements). `schema_migrations`
+  table replaces `PRAGMA user_version`; each migration in its own tx.
+  `RedactDSN` / `IsPostgresDSN` exported.
+- **`internal/store/errors.go`** — `IsUniqueViolation` (SQLite message *or*
+  pg SQLSTATE 23505); `auth` now uses it instead of matching `"UNIQUE"`.
+- **`internal/store/users_guard.go`** — `SetUserDisabled` / `SetUserRole`
+  do the last-admin check + write in one tx with `SELECT … FOR UPDATE` on
+  the admin rows (`forUpdate` is `""` on SQLite). `EraseUser` (retention.go)
+  wrapped the same way. `auth.Service.SetDisabled` / `SetRole` now delegate.
+  `TestLastAdminGuardConcurrent` proves two concurrent demotions leave one
+  admin — on both backends.
+- **`SessionsActive`** — was comparing millis to `strftime('%s')` seconds
+  (counted expired sessions); now a bound millis param. Portable + a bug fix.
+- **`PurgeExpiredSubmissions`** — rewritten `created_at + window < now`
+  instead of `now - window` so both placeholders have a type context
+  (Postgres rejects bare `? - ?`).
+- **`cmd/formfromfile`** — `resolveDBTarget` (`FFF_DATABASE_URL_FILE` ›
+  `FFF_DATABASE_URL` › `--db`); startup log + CLI errors go through
+  `RedactDSN`; `fff_db_bytes` gauge skipped on Postgres; `user` CLI honours
+  the URL.
+- **Tests** — `store` + `auth` harnesses open `TEST_DATABASE_URL` (public
+  schema wiped per test) when set. CI `server` job gains a `postgres:16`
+  service and a second `go test -p 1 ./internal/store/... ./internal/auth/...`
+  pass.
+- **Docs** — `.env.example` (DB section, SQLite default), `docker-compose.yml`
+  (commented `db:` service), README env table, `DEPLOY.md` §Postgres,
+  `SCALE.md`.
+
+### Not done (follow-up)
+- `httpapi` tests still SQLite-only (they exercise HTTP wiring, not SQL
+  portability; `store` + `auth` cover the backend).
+- Submission-cap enforcement (`SubmissionCount` then insert, at the httpapi
+  layer) is still check-then-act — a burst on Postgres can overshoot the cap
+  by a handful. Anti-spam feature, acceptable; note in the ops docs if it
+  ever matters.
+- No SQLite → Postgres data migration tool.

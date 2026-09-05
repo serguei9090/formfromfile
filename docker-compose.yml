@@ -11,7 +11,10 @@ services:
     restart: unless-stopped
     environment:
       FFF_ADDR: 0.0.0.0:8787
+      # SQLite by default. To use the optional `db` service below, set
+      # FFF_DATABASE_URL in .env (or FFF_DATABASE_URL_FILE for a secret).
       FFF_DB: /data/formfromfile.db
+      FFF_DATABASE_URL: "${FFF_DATABASE_URL:-}"
       # set false once your admin account exists, then create users from /admin
       FFF_ALLOW_REGISTER: "${FFF_ALLOW_REGISTER:-true}"
       # honour X-Forwarded-For — Caddy sets it, and nothing else can reach :8787
@@ -33,6 +36,27 @@ services:
     volumes:
       - fff-data:/data
     # no host ports — only Caddy talks to the app, over the compose network
+    # depends_on: [db]   # uncomment if you enable the db service below
+
+  # Optional Postgres. Uncomment this service, uncomment app.depends_on above,
+  # and set in .env:
+  #   FFF_DATABASE_URL=postgres://fff:CHANGE_ME@db:5432/fff?sslmode=disable
+  # (sslmode=disable is fine here — the connection never leaves the compose
+  # network. Use require/verify-full for an external Postgres.)
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: fff
+  #     POSTGRES_PASSWORD: CHANGE_ME       # match FFF_DATABASE_URL
+  #     POSTGRES_DB: fff
+  #   volumes:
+  #     - fff-pg:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U fff"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 10
 
   caddy:
     image: caddy:2
@@ -50,5 +74,6 @@ services:
 
 volumes:
   fff-data:
+  # fff-pg:        # uncomment with the db service
   caddy-data:
   caddy-config:

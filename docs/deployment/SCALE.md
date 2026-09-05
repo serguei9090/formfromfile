@@ -38,24 +38,32 @@ submissions/minute, SQLite is comfortable. Above that — hundreds of concurrent
 writers, or a multi-tenant SaaS with thousands of orgs — Postgres earns its
 keep.
 
-## If Postgres is ever needed
+## Postgres (F33 — shipped)
 
-The codebase is already shaped for it: **no raw SQL escapes the `store`
-package** (`grep -rn "s.DB" internal/httpapi` → nothing). A `store` interface +
-a `pgx` implementation is a contained change. The SQLite-isms to rewrite:
+Set `FFF_DATABASE_URL=postgres://…` and the app uses Postgres instead of
+SQLite — it creates its own tables and runs its migrations on first boot.
+SQLite stays the default. See [`DEPLOY.md`](DEPLOY.md) §Postgres for the URL,
+TLS, and secret-handling notes.
 
-- `PRAGMA user_version` migrations → a `schema_migrations` table (or adopt
-  `golang-migrate`).
-- `INSERT … ON CONFLICT(key) DO UPDATE` — works in Postgres as-is.
-- `strftime('%s','now')`, `lower(...)` `LIKE` — swap for `extract(epoch …)`,
-  `ilike`.
-- `randomblob`/`hex` id generation in v3's data migration — move to Go.
-- `AUTOINCREMENT` — none used (all ids are app-generated `xxx_<hex>`).
-- Drop `SetMaxOpenConns(1)`; Postgres does its own concurrency.
-- FK `ON DELETE SET NULL` / `CASCADE` — identical syntax.
+How it works (`internal/store/postgres.go`), for the curious:
 
-Estimate: **2–4 days** for the adapter + migration tooling + a CI matrix that
-runs the store tests against both.
+- A `database/sql` driver wrapper rewrites SQLite-style `?` placeholders to
+  `$1,$2,…` so every query in the codebase runs unchanged.
+- DDL is adapted on the fly: `INTEGER` → `BIGINT` (our timestamps are
+  unix-millis, which overflow int4) and the one `lower(hex(randomblob()))`
+  id expression in the v3 backfill → a portable `md5(random()…)`.
+- `PRAGMA user_version` → a `schema_migrations` table; each migration runs in
+  its own transaction.
+- The last-admin guards (`SetDisabled` / `SetRole` / `EraseUser`) now do the
+  count-then-write in a transaction with `SELECT … FOR UPDATE` on the admin
+  rows — on SQLite the single writer already made that atomic; on Postgres
+  the pool would let two callers race it.
+- `SetMaxOpenConns(1)` is dropped (pool of 20).
+- `store` and `auth` tests run a second time in CI against a `postgres:16`
+  service container (`TEST_DATABASE_URL`).
+
+No SQLite → Postgres data-migration tool is provided — adopters start fresh
+or use `pgloader`.
 
 ## Load-test recipe (not yet run)
 
