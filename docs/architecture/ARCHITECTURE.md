@@ -1,7 +1,7 @@
 # Architecture & code walkthrough
 
 A file-by-file tour so a fresh session can pick up cold. Pairs with
-[`../CLAUDE.md`](../CLAUDE.md) (conventions) and [`API.md`](API.md) (HTTP contract).
+[`../CLAUDE.md`](../../CLAUDE.md) (conventions) and [`API.md`](../reference/API.md) (HTTP contract).
 
 ---
 
@@ -90,7 +90,7 @@ One SQLite file. Three tables: `users`, `sessions`, `schemas` (see
 ### The extension layer (`formflow_ext/`, **FormFromFile-only**)
 
 Everything the app adds on top of the frozen core lives here (see
-[`../PLAN-F6.md`](../PLAN-F6.md) → "keep the verbatim core frozen"). No imports
+[`../PLAN-F6.md`](../planning/PLAN-F6.md) → "keep the verbatim core frozen"). No imports
 from `core/**` internals, no React.
 
 - `fieldMeta.ts` — `FieldMeta` (label / help / editable / required / pattern /
@@ -306,7 +306,7 @@ No Radix / Base UI.
 ### `internal/httpapi/`
 
 - `httpapi.go` — `Options{ Store, Auth, AllowRegister, StaticFS }`, `Router()`
-  builds the chi tree (route list in [`API.md`](API.md)). `handlers` holds
+  builds the chi tree (route list in [`API.md`](../reference/API.md)). `handlers` holds
   `opts`. Helpers: `writeJSON`, `writeErr`, `decode` (1 MiB `MaxBytesReader`).
   `spaHandler` serves `StaticFS` and falls back to `index.html` for client
   routes.

@@ -63,7 +63,7 @@ rest of the app (roles, sessions, `requireAuth`, everything).
   duplicate. That person can now sign in either way.
 - **First account ever, on a fresh database** → admin, whether they arrived
   via password register or Google sign-in first. Same bootstrap rule either
-  way — see [`CLAUDE.md`](../CLAUDE.md) "first user = admin".
+  way — see [`CLAUDE.md`](../../CLAUDE.md) "first user = admin".
 - **Disabled account** → Firebase sign-in is rejected the same as a disabled
   password login.
 - Firebase's own `email_verified` claim is required to be `true`. Google
@@ -104,7 +104,7 @@ Unset any of the four vars (or don't set them at all) → the button doesn't
 render and `/api/auth/firebase` answers 501. Nothing else changes.
 
 **Security headers adjust automatically when Firebase is configured** (see
-[`DEPLOY.md`](DEPLOY.md#security-headers)): the CSP's `connect-src` allows
+[`DEPLOY.md`](../deployment/DEPLOY.md#security-headers)): the CSP's `connect-src` allows
 Google's identity APIs and `frame-src` allows your `authDomain` (the popup
 handshake's helper page), and `Cross-Origin-Opener-Policy` relaxes from
 `same-origin` to `same-origin-allow-popups` — strict `same-origin` COOP
@@ -142,7 +142,7 @@ this link** → **Signed-in users only**.
   reached directly (e.g. a stale tab, a replayed request).
 - Any signed-in account can fill it — password or Google, any role. There's
   no per-role or per-email allow-list yet (see "Non-goals" in
-  [`PLAN-F32.md`](../PLAN-F32.md) if you need tighter targeting).
+  [`PLAN-F32.md`](../planning/PLAN-F32.md) if you need tighter targeting).
 - Signing in from that prompt sends the filler straight back to the form —
   `/login` (and `/register`) honor a `?redirect=` query param, restricted to
   a same-origin relative path (rejects anything that could act as an open
@@ -162,7 +162,7 @@ this link** → **Signed-in users only**.
 
 - Firebase config is **env-only** — unlike Turnstile/AI-beta/etc it does not
   yet have a live toggle in **Admin → Settings** (see
-  [`PLAN-F29.md`](../PLAN-F29.md) for that pattern). Changing it needs a
+  [`PLAN-F29.md`](../planning/PLAN-F29.md) for that pattern). Changing it needs a
   restart. A fast-follow if wanted.
 - No account **un-linking** — once a Firebase uid is linked to an account
   there's no UI to detach it. An admin can still reset that account's local

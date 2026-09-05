@@ -5,8 +5,8 @@ live E2E test against `I:\example.Simple.DEFAULT.xml`. That test confirmed the
 stack works end-to-end (auth, per-user store, detect → fill → export round-trip)
 and surfaced the gaps this plan closes.
 
-Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the file map and
-[`CLAUDE.md`](CLAUDE.md) for conventions before starting a phase.
+Read [`docs/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) for the file map and
+[`CLAUDE.md`](../../CLAUDE.md) for conventions before starting a phase.
 
 ---
 
@@ -387,9 +387,9 @@ up as a filler-side validation with no authoring step.
 
 ## Cross-cutting
 
-- **Docs:** every phase updates [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-  (new `formflow_ext/` section) and [`docs/API.md`](docs/API.md) (F11 routes).
-  Update [`PLAN.md`](PLAN.md) status + [`CLAUDE.md`](CLAUDE.md) "Status & what's
+- **Docs:** every phase updates [`docs/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md)
+  (new `formflow_ext/` section) and [`docs/API.md`](../reference/API.md) (F11 routes).
+  Update [`PLAN.md`](PLAN.md) status + [`CLAUDE.md`](../../CLAUDE.md) "Status & what's
   next" as phases land.
 - **`erasableSyntaxOnly`** is on — no `enum`, no parameter properties. Use union
   types + plain objects (already assumed above).

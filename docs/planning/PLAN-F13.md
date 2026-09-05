@@ -5,7 +5,7 @@ Follow-on to [`PLAN.md`](PLAN.md) (F0–F5) and [`PLAN-F6.md`](PLAN-F6.md)
 friction, and shipping confidence. Nothing here adds a new capability — it
 makes the existing ones trustworthy.
 
-Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`CLAUDE.md`](CLAUDE.md)
+Read [`docs/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) and [`CLAUDE.md`](../../CLAUDE.md)
 before starting a phase. Same rules: everything lands in
 `web/src/formflow_ext/**` or the app layer — the verbatim `core/form_flow/**`
 stays frozen.

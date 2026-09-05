@@ -9,8 +9,8 @@ what's next (F5).
 Also useful:
 
 @README.md
-@docs/ARCHITECTURE.md
-@docs/API.md
+@docs/architecture/ARCHITECTURE.md
+@docs/reference/API.md
 
 > Keep `CLAUDE.md` as the single source of truth. If a Gemini-specific note is
 > ever needed, add it below this line — otherwise everything lives in

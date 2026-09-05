@@ -202,7 +202,7 @@ Delivery: `POST { event, templateId, submission, output }` with
 ### AI (all `requireAuth`, 30/user/hour, `501` without `FFF_ANTHROPIC_API_KEY`)
 
 `GET /api/ai/status` · `POST /api/ai/{suggest-meta,explain-diff,
-schema-from-prompt,fill-assist}` — see [`AI.md`](AI.md).
+schema-from-prompt,fill-assist}` — see [`AI.md`](../guides/AI.md).
 
 ### Admin
 

@@ -36,9 +36,9 @@ FormFromFile/
 
 **F0–F5 + F6–F12 done.** F6–F12 (templates / validation / roles / formats)
 are logged in [`PLAN-F6.md`](PLAN-F6.md). Code walkthrough:
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); HTTP contract:
-[`docs/API.md`](docs/API.md); AI-session guide: [`CLAUDE.md`](CLAUDE.md) /
-[`GEMINI.md`](GEMINI.md).
+[`docs/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md); HTTP contract:
+[`docs/API.md`](../reference/API.md); AI-session guide: [`CLAUDE.md`](../../CLAUDE.md) /
+[`GEMINI.md`](../../GEMINI.md).
 
 - **F1 done** (`d9434cc`) — FormFlow core copied verbatim, 14 tests pass.
 - **F2 done** (`6500c0d`) — `internal/auth` (argon2id + throttle + Service),

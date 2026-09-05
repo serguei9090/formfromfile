@@ -1,9 +1,9 @@
 # FormFromFile — CLAUDE.md
 
 Guidance for AI coding sessions (Claude Code, Gemini CLI via `GEMINI.md`) working
-in this repo. Read [`README.md`](README.md) for the product pitch, [`PLAN.md`](PLAN.md)
-for the phase log, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the
-file-by-file code walkthrough, and [`docs/API.md`](docs/API.md) for the HTTP
+in this repo. Read [`README.md`](README.md) for the product pitch, [`PLAN.md`](docs/planning/PLAN.md)
+for the phase log, [`docs/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) for the
+file-by-file code walkthrough, and [`docs/API.md`](docs/reference/API.md) for the HTTP
 contract.
 
 ## What this is
@@ -160,7 +160,7 @@ docker run -p 8787:8787 -v fff-data:/data formfromfile
 admin user list), the designer (detect → retype → fill → export), per-user
 saved forms.
 
-**F5 — release + deploy (not started).** See [`PLAN.md`](PLAN.md) §F5:
+**F5 — release + deploy (not started).** See [`PLAN.md`](docs/planning/PLAN.md) §F5:
 - copy `web/dist` into `server/cmd/formfromfile/dist/` before `go build` so
   `//go:embed all:dist` bundles the real SPA (today it embeds a placeholder);
   `main.go` already switches to serving it when `dist/index.html` exists.
@@ -170,14 +170,14 @@ saved forms.
 - tag `v0.1.0`.
 
 **F6–F12 done.** All in `web/src/formflow_ext/` (the verbatim `core/` stays
-frozen) — see [`PLAN-F6.md`](PLAN-F6.md) progress log and
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §"extension layer". Field
+frozen) — see [`PLAN-F6.md`](docs/planning/PLAN-F6.md) progress log and
+[`docs/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) §"extension layer". Field
 metadata + validation presets, XML-attribute/comment round-trip, `%TOKEN%`
 templates, author ⚙ panel, validated `/fill/:id`, publish + `/f/:slug` share +
 submissions, format plugins (TOML/INI/`.env`/CSV) + JSON Schema import. Extra
 deps: `smol-toml`, `papaparse` (+ `@types/papaparse`).
 
-**Polish F13–F18 done** (see [`PLAN-F13.md`](PLAN-F13.md) progress log):
+**Polish F13–F18 done** (see [`PLAN-F13.md`](docs/planning/PLAN-F13.md) progress log):
 comment/order-preserving YAML (`yaml/richYaml.ts`) + `.env` line model,
 `smartScalar` (finding #8), route code-split (208 kB initial) + a11y,
 `httpapi` handler tests + `golangci-lint` + offline banners + Docker
@@ -186,11 +186,11 @@ submission delete + CSV + fill-draft autosave, sample gallery + first-run tip.
 Deferred: XML inline-comment position, per-token metadata, zip/QR, Playwright,
 README screenshots.
 
-**v0.2 done (F19–F23, F25, F26)** — see [`PLAN-F19.md`](PLAN-F19.md) progress
+**v0.2 done (F19–F23, F25, F26)** — see [`PLAN-F19.md`](docs/planning/PLAN-F19.md) progress
 log. Reverse fill + value diff; template versioning / draft-publish / folders /
 fork / approval queue; conditional/computed/cross-field/async validation
 (`formflow_ext/rules.ts`, no `eval`); **AI assist** (`server/internal/ai/`,
-`FFF_ANTHROPIC_API_KEY`, 501 without a key — see [`docs/AI.md`](docs/AI.md));
+`FFF_ANTHROPIC_API_KEY`, 501 without a key — see [`docs/AI.md`](docs/guides/AI.md));
 `author` role + `requireAuthor`; submission comments; HMAC webhooks
 (`internal/webhook`) + delivery log; `submissions.zip`; audit log; per-form
 submission cap + branding + completion analytics; order-preserving XML render.
@@ -224,7 +224,7 @@ POSTs `FFF_ERROR_WEBHOOK`; CI gains `govulncheck` + Trivy (non-blocking).
 `GET /api/admin/data-ops`.
 
 **PLAN-F29 complete (F29a–F29f).** Also: `store.Open` now sets WAL +
-`synchronous=NORMAL` + `busy_timeout` (F29f); [`docs/SCALE.md`](docs/SCALE.md).
+`synchronous=NORMAL` + `busy_timeout` (F29f); [`docs/SCALE.md`](docs/deployment/SCALE.md).
 Deferred: AI $ budget (needs SDK token accounting).
 
 **F30 done** — XSD import: `formflow_ext/importers/xsdSchema.ts` builds a
@@ -239,7 +239,7 @@ formal schema yet, refine the generated one, re-import for tight validation.
 +10 tests incl. a generate→import round-trip.
 
 **F31 done** — Firebase Google sign-in, coexisting with password auth. See
-[`docs/AUTH.md`](docs/AUTH.md) for the full walkthrough. Backend:
+[`docs/AUTH.md`](docs/guides/AUTH.md) for the full walkthrough. Backend:
 `internal/firebaseauth` verifies a Firebase ID token's RS256 signature
 against Google's public JWKS (cached, ~hourly refresh) — **no Firebase Admin
 SDK, no service-account key**, only `FFF_FIREBASE_PROJECT_ID` (checked as
@@ -268,7 +268,7 @@ submit route 401 an anonymous caller when gated (`sessionUser` resolves an
 optional session outside `requireAuth`); ops-panel toggle; `PublicFillPage`
 shows a sign-in prompt on 401; `AuthCard` honors `?redirect=` (relative-path
 only) after login/register/Google sign-in so a blocked filler lands back on
-the form. See [`PLAN-F32.md`](PLAN-F32.md).
+the form. See [`PLAN-F32.md`](docs/planning/PLAN-F32.md).
 
 **Follow-up UX fixes (post-F32)** — `AdminPage` restructured into Users /
 Settings / Activity tabs (was one long scrolling page mixing all three);
@@ -288,6 +288,21 @@ tool-config shape and had no place in a public sample gallery.
 
 **Deferred / ideas** (`PLAN.md` "Open items"): schema version history + diff,
 reverse-fill from an existing filled file, OIDC/SSO.
+
+**Pre-publish audit done** — `docs/` reorganized into
+`guides/`/`reference/`/`architecture/`/`deployment/`/`development/`/`planning/`
+subfolders (`docs/README.md` is the index) + `architecture/DIAGRAMS.md`
+(Mermaid) + `development/CI.md`. Fixed two real bugs an audit surfaced:
+`clientIP()` (`httpapi/share.go`) wasn't stripping the port off
+`RemoteAddr`, so the per-IP submit/Firebase rate limiters keyed on
+`ip:port` — a client opening a fresh connection per request reset its own
+window (only exploitable without `FFF_TRUST_PROXY`, since that path already
+normalized to a bare IP); and `HomePage.tsx`'s "Anyone with the link"
+publish choice made no `/ops` call at all, so publish → restrict →
+unpublish → republish-as-anyone could silently leave a template still
+gated to `authenticated`. `validateProxy` not being gated by
+`public_access` is a known, documented non-goal (see `PLAN-F32.md`), not a
+bug. No secrets in the tree or git history.
 
 ## Known rough edges
 

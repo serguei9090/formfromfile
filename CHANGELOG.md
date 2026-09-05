@@ -5,7 +5,7 @@ this project versions by milestone rather than semver until 1.0.
 
 ## [Unreleased] — v0.2 (F19–F26)
 
-Plan + progress: [`PLAN-F19.md`](PLAN-F19.md). F24 (more formats + bulk CSV)
+Plan + progress: [`PLAN-F19.md`](docs/planning/PLAN-F19.md). F24 (more formats + bulk CSV)
 and F27 (integrations) deferred.
 
 ### Added

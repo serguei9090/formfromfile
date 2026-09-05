@@ -31,7 +31,7 @@ go test ./... && golangci-lint run ./...`), Conventional Commits +
   password returns none, weak/invalid-role/duplicate rejected, non-admin
   403). Manually verified in-browser: created a user, logged in with the
   generated password over a fresh session. See
-  [`docs/AUTH.md`](docs/AUTH.md) §"Admin-provisioned accounts".
+  [`docs/AUTH.md`](../guides/AUTH.md) §"Admin-provisioned accounts".
 - **F32b done** — migration **v9**: `schemas.public_access` (`anyone` |
   `authenticated`, default `anyone`). `sessionUser(r)` resolves an optional
   session for routes outside `requireAuth`; `publicTemplateBySlug` +

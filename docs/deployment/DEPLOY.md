@@ -3,7 +3,7 @@
 The intended target for now is **an internal tool for one team** — reachable
 over a VPN or an SSO-gated tunnel, TLS-terminated, with a backed-up data volume.
 Public-internet hardening is a separate track — see
-[`PLAN-F19.md`](../PLAN-F19.md) §F28.
+[`PLAN-F19.md`](../planning/PLAN-F19.md) §F28.
 
 The app is one Go binary that serves the SPA and `/api` on a single port
 (`8787` in the container). It has no external dependencies — SQLite lives in a
@@ -58,9 +58,9 @@ docker run -d --name fff \
 | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response (see §security headers); `off` disables |
 | `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus text) behind `Authorization: Bearer <token>`; unset → route absent |
 | `FFF_ERROR_WEBHOOK` | — | recovered panics POST `{time,requestId,method,path,error,stack}` here — point it at Slack/Discord/an alert sink |
-| `FFF_FIREBASE_PROJECT_ID` | — | set → "Continue with Google" on `/login`; see [`AUTH.md`](AUTH.md) |
+| `FFF_FIREBASE_PROJECT_ID` | — | set → "Continue with Google" on `/login`; see [`AUTH.md`](../guides/AUTH.md) |
 | `FFF_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_APP_ID` | — | Firebase Web SDK config (public, not secrets) — needed alongside `_PROJECT_ID` |
-| `FFF_ANTHROPIC_API_KEY` | — | AI beta key (see [`AI.md`](AI.md)) |
+| `FFF_ANTHROPIC_API_KEY` | — | AI beta key (see [`AI.md`](../guides/AI.md)) |
 | `FFF_AI_BETA` | — | `true` to actually turn AI on — **needs the key too** |
 | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
 
@@ -112,7 +112,7 @@ the project id matters for trust. Unset (the default) → password-only, exactly
 today's behavior. First account either way (password or Google) becomes
 admin; unknown emails self-provision as `user`, existing emails link.
 Full walkthrough (Firebase console steps, authorized domains, account-linking
-behavior): [`AUTH.md`](AUTH.md).
+behavior): [`AUTH.md`](../guides/AUTH.md).
 
 ---
 

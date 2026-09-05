@@ -1,14 +1,21 @@
 # FormFromFile
 
-Upload an XML, YAML, or JSON file → the app auto-detects its structure
-(including repeating / dynamic-array sections) → you get a generated form →
-fill it → export the result in the original format.
+[![CI](https://github.com/serguei9090/formfromfile/actions/workflows/ci.yml/badge.svg)](https://github.com/serguei9090/formfromfile/actions/workflows/ci.yml)
+
+Upload an XML, YAML, or JSON file (or import a JSON Schema / `.xsd`) → the app
+auto-detects its structure (including repeating / dynamic-array sections) →
+you get a generated form → fill it → export the result in the original
+format.
 
 A standalone spin-out of **InfraKit Studio**'s FormFlow module, with multi-user
-accounts and per-user saved forms.
+accounts, per-user saved forms, and publishable shareable forms.
 
 - **Web only** — a static SPA (`web/`) + a Go backend (`server/`). No desktop build.
-- **Multi-user** — register / login (argon2id), per-user schemas stored server-side.
+- **Multi-user** — register / login (argon2id) or Google sign-in (Firebase),
+  admin-provisioned accounts, per-user schemas stored server-side.
+- **Publish + share** — turn a saved form into a public link (`/f/:slug`),
+  open to anyone or gated to signed-in users, with submission review,
+  approval workflow, and webhooks.
 - **Local-first to run** — one Go binary that embeds the SPA and serves `/api`.
 - MIT licensed.
 
@@ -42,14 +49,14 @@ cd server && go build ./... && go vet ./... && go test ./...
 | — | `FFF_TRUST_PROXY` | — | `true` to key rate-limits off `X-Forwarded-For` / `X-Real-IP` — **only** behind a proxy that overwrites them (Caddy/nginx/Cloudflare) |
 | — | `FFF_LOG_FORMAT` | text | `json` for one structured line per request (id, status, dur, ip); `FFF_LOG_LEVEL` = `debug`\|`info`\|`warn`\|`error` |
 | — | `FFF_WEBHOOK_ALLOW_PRIVATE` | — | `true` allows webhook targets on LAN / loopback / `http` — default blocks them (SSRF) |
-| — | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | both set → Cloudflare Turnstile CAPTCHA on public forms (free; see [`docs/DEPLOY.md`](docs/DEPLOY.md)) |
+| — | `FFF_TURNSTILE_SITE_KEY` / `FFF_TURNSTILE_SECRET` | — | both set → Cloudflare Turnstile CAPTCHA on public forms (free; see [`docs/DEPLOY.md`](docs/deployment/DEPLOY.md)) |
 | — | `FFF_ANTHROPIC_API_KEY` | — | AI assist key (beta) |
-| — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/AI.md)) |
+| — | `FFF_AI_BETA` | — | `true` to turn AI on — **needs the key too**; off by default (see [`docs/AI.md`](docs/guides/AI.md)) |
 | — | `FFF_AI_MODEL` | `claude-sonnet-5` | AI model override |
 | — | `FFF_SECURITY_HEADERS` | `on` | security headers + CSP on every response; `off` to disable (debugging / odd proxy) |
 | — | `FFF_METRICS_TOKEN` | — | set → `GET /metrics` (Prometheus) behind `Authorization: Bearer <token>`; unset → no route |
 | — | `FFF_ERROR_WEBHOOK` | — | recovered panics POST a JSON report here (request id, path, error, stack) |
-| — | `FFF_FIREBASE_PROJECT_ID` | — | set → a "Continue with Google" button appears on `/login`; see [`docs/AUTH.md`](docs/AUTH.md) |
+| — | `FFF_FIREBASE_PROJECT_ID` | — | set → a "Continue with Google" button appears on `/login`; see [`docs/AUTH.md`](docs/guides/AUTH.md) |
 | — | `FFF_FIREBASE_API_KEY` / `_AUTH_DOMAIN` / `_APP_ID` | — | the rest of the Firebase Web SDK config (not secrets) — needed alongside `_PROJECT_ID` |
 
 Most of these (register, Turnstile keys, webhook-allow-private, AI beta,
@@ -58,7 +65,7 @@ Settings** with no restart — a stored value overrides the startup env/flag.
 
 The release binary embeds `web/dist` and serves the SPA + `/api` from one
 process. In dev the SPA runs under Vite and proxies `/api` to the server.
-Deploying for a team? → [`docs/DEPLOY.md`](docs/DEPLOY.md). Fastest path:
+Deploying for a team? → [`docs/DEPLOY.md`](docs/deployment/DEPLOY.md). Fastest path:
 `cp .env.example .env` (set `DOMAIN` + `ACME_EMAIL`) then `docker compose up -d`
 — app + Caddy (auto-TLS, security headers) + a named data volume. Also covers
 nginx, Cloudflare Tunnel + Access (SSO, zero open ports), and Litestream backups.
@@ -77,31 +84,62 @@ SQLite file in the `/data` volume. Override any of the `FFF_*` env vars above
 with `-e`. `.github/workflows/ci.yml` runs the web + server gates and a
 container smoke test (healthz, config, embedded SPA, first-user register).
 
-## Status
+## Documentation
 
-**F0–F12 + F5 done.** See [`PLAN.md`](PLAN.md) / [`PLAN-F6.md`](PLAN-F6.md) for
-the phase log and [`docs/`](docs/) for the code walkthrough. AI-session
-guidance is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
+Full docs live under [`docs/`](docs/README.md) — start there for the index.
+Highlights:
 
-Working today: multi-user auth (register / login / logout, first user = admin,
-admin user list, optional Firebase Google sign-in — see
-[`docs/AUTH.md`](docs/AUTH.md)); the **template author** flow (detect XML / YAML / JSON / TOML
-/ INI / `.env` / CSV, or import a JSON Schema / XML Schema (`.xsd`) for
-declared-not-guessed validation → retype → per-field labels, help and
-validation presets → `%tokens%`); a **Generate .xsd** button when the
-detected format is XML (no formal schema yet? get a starting one from a
-sample, refine it, re-import); the **filler** flow (validated fill-only form
-at `/fill/:id`, export in the original format); and **sharing** (publish →
-`/f/:slug` public link, optionally restricted to signed-in users only →
-submissions collected server-side).
+- [**Diagrams**](docs/architecture/DIAGRAMS.md) — system overview, request
+  flow, auth flow, and the detect → fill → export → publish → submit lifecycle.
+- [**Architecture**](docs/architecture/ARCHITECTURE.md) — file-by-file
+  walkthrough of `web/` and `server/`.
+- [**API reference**](docs/reference/API.md) — every HTTP route.
+- [**Auth**](docs/guides/AUTH.md) — password auth, admin-provisioned users,
+  Firebase Google sign-in, per-template access gates.
+- [**Deploy**](docs/deployment/DEPLOY.md) — docker-compose + Caddy quickstart,
+  manual Docker, nginx, Cloudflare Tunnel, backups, a pre-handoff checklist.
+- [**CI/CD**](docs/development/CI.md) — what each GitHub Actions job checks
+  and how to reproduce it locally.
+- [**AI assist**](docs/guides/AI.md) — the optional, off-by-default
+  Anthropic-powered assist features.
+
+Phase-by-phase build history: [`docs/planning/`](docs/planning/) and
+[`CHANGELOG.md`](CHANGELOG.md). AI-coding-session guidance (stack, conventions,
+how to add things) is in [`CLAUDE.md`](CLAUDE.md) / [`GEMINI.md`](GEMINI.md).
+
+## What's working today
+
+- **Auth** — password (argon2id) or Google sign-in (Firebase, verified
+  server-side against Google's public JWKS, no Admin SDK); first account ever
+  created becomes admin; admins can also provision accounts directly (Admin →
+  Users) with a generated or explicit password.
+- **Author flow** — detect XML / YAML / JSON / TOML / INI / `.env` / CSV, or
+  import a JSON Schema / XML Schema (`.xsd`) for declared-not-guessed
+  validation → retype → per-field labels, help text, and validation presets
+  → `%tokens%`. A **Generate .xsd** button (XML templates) gives you a
+  starting schema from a sample to refine and re-import.
+- **Filler flow** — validated fill-only form at `/fill/:id`, export back to
+  the original format (order/comment-preserving where the format supports it).
+- **Publish + share** — turn a saved form into a public link (`/f/:slug`),
+  either open to anyone or gated to signed-in users only; submissions are
+  collected server-side with optional approval-before-visible, comments, CSV
+  export, per-form submission caps, and HMAC-signed webhooks.
+- **Admin** — dedicated Users / Settings / Activity tabs: user management,
+  runtime settings (registration, Turnstile, AI beta, webhook policy,
+  default submission cap — no restart needed), audit log, and per-user
+  GDPR export/erase.
+- **Ops hardening** — SSRF-guarded outbound requests (webhooks, async
+  checks), Cloudflare Turnstile on public forms, structured JSON logging,
+  per-IP rate limits, security headers + CSP, Prometheus metrics.
 
 ## Layout
 
 ```
 web/      Vite + React 19 + TS + Tailwind v4 (emerald theme)
   src/core/form_flow/   ← the parser, copied verbatim from InfraKit, framework-free
+  src/formflow_ext/     ← everything built on top (metadata, validation, publish/share, formats)
   src/designer/         ← the schema-tree + live-form UI
   src/api/ src/stores/  ← backend client + Zustand state
-server/   Go — chi router, modernc.org/sqlite, argon2id auth
-docs/     ARCHITECTURE.md, API.md
+server/   Go — chi router, modernc.org/sqlite, argon2id + Firebase auth
+docs/     see docs/README.md — guides/, reference/, architecture/, deployment/, development/, planning/
 ```

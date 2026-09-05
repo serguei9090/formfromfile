@@ -361,7 +361,7 @@ lands:
 ### F28 — public-internet hardening  ·  **on request only** — needed before exposing to untrusted fillers
 
 Today's posture: safe for an internal team behind a VPN / Cloudflare Access /
-nginx ACL (see [`docs/DEPLOY.md`](docs/DEPLOY.md)). The anonymous surface
+nginx ACL (see [`docs/DEPLOY.md`](../deployment/DEPLOY.md)). The anonymous surface
 (`/f/:slug`, `/api/public/*`) is **not** hardened for the open internet. Do this
 first if public fillers are a real requirement:
 

@@ -2,7 +2,7 @@
 
 Vite + React 19 + TS + Tailwind v4 (emerald theme). See the repo root
 [`../README.md`](../README.md), [`../CLAUDE.md`](../CLAUDE.md), and
-[`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.
+[`../docs/ARCHITECTURE.md`](../docs/architecture/ARCHITECTURE.md) §2.
 
 ```bash
 bun install
