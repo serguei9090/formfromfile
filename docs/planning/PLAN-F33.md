@@ -96,6 +96,38 @@ most likely to hide a bug if rushed.
   with "how to switch") + `docker-compose.yml` optional service +
   `.env.example`.
 
+## Production secret handling (env is fine — with these)
+
+An env var for `DATABASE_URL` is standard (12-factor) and every host injects
+it that way. The DSN carries a password, so:
+
+1. **Redact it everywhere it's printed.** Today `main.go:103` logs
+   `"db", *dbPath` at startup and `usercli.go:64` prints it in an error — a
+   Postgres URL there dumps `postgres://user:PASSWORD@host` into logs. F33
+   must add a `redactDSN(url) string` that logs scheme + host + dbname only
+   (`postgres://host:5432/fff`), and route both sites (and any future one)
+   through it. Same audit for the `FFF_ERROR_WEBHOOK` panic payload and the
+   `/api/config` / metrics / admin-settings responses (none echo it today —
+   keep it that way).
+2. **Support `FFF_DATABASE_URL_FILE`.** Read the DSN from a file path if the
+   `_FILE` variant is set — lets Docker/Compose/k8s secrets provide it
+   without the value ever being a process env var (`docker inspect`,
+   `/proc/<pid>/environ`, child processes). Small, widely-expected
+   convention.
+3. **Never commit the DSN.** `docker-compose.yml` references `${DATABASE_URL}`
+   from a gitignored `.env` (compose already does this for other secrets) or
+   a Docker secret — never an inline `environment:` literal. Document in
+   `DEPLOY.md`.
+4. **Require TLS.** Document `sslmode=require` (or `verify-full` + a CA) in
+   the example URL; a bare `sslmode=disable` to a remote host is a mistake.
+5. **`registerMetrics`** — the `fff_db_bytes` gauge `os.Stat`s the path;
+   skip it (or report 0) on the Postgres path where there's no file.
+
+Host-specific: k8s `Secret` (as env or mounted file + `_FILE`), or
+external-secrets pulling from Vault / AWS Secrets Manager / GCP Secret
+Manager; Fly/Render/Railway use their own encrypted variable store. All of
+these still hand the app an env var or a file — the app side is the same.
+
 ## Out of scope for F33
 - Automatic SQLite→Postgres data migration (document `pgloader` or a manual
   dump/load; most adopters start fresh).
@@ -106,10 +138,13 @@ most likely to hide a bug if rushed.
 
 1. `store.Open` scheme switch + pgx dep + `rebind` wrapper + `schema_migrations`
    table (SQLite path routed through the same wrapper, behavior identical).
+   `FFF_DATABASE_URL` + `_FILE` variant; `redactDSN` + route the two logging
+   sites through it; `fff_db_bytes` gauge conditional.
 2. Migration-string dialect audit + the 3 function swaps.
 3. Transaction-wrap the 6 TOCTOU sites (lands for both backends).
 4. `TEST_DATABASE_URL` test path + CI service container.
-5. Docs + compose + `.env.example`.
+5. Docs + compose (optional `postgres` service, `${DATABASE_URL}` from
+   gitignored `.env`) + `.env.example`.
 
 Estimate: 1–2 focused days. Ships behind an unset env var — zero risk to
 existing SQLite deployments until someone sets `FFF_DATABASE_URL`.
