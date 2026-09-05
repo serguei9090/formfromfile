@@ -24,6 +24,11 @@ type testEnv struct {
 
 func newEnv(t *testing.T) *testEnv {
 	t.Helper()
+	// clientIP() now keys rate limiters by bare IP (not IP:port), so every
+	// test hitting the loopback httptest server shares one bucket — reset
+	// between tests so one test's traffic can't exhaust another's budget.
+	submitLimiter.reset()
+	firebaseLimiter.reset()
 	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)

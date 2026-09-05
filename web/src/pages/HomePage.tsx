@@ -102,15 +102,13 @@ export function HomePage() {
     const { id } = publishPrompt
     setPublishPrompt(null)
     const rec = await publish(id)
-    if (restricted) {
-      await api.post(`/schemas/${id}/ops`, {
-        submissionCap: rec.submissionCap,
-        brand: rec.brand ?? '',
-        retentionDays: rec.retentionDays ?? 0,
-        publicAccess: 'authenticated',
-      })
-      await refresh()
-    }
+    await api.post(`/schemas/${id}/ops`, {
+      submissionCap: rec.submissionCap,
+      brand: rec.brand ?? '',
+      retentionDays: rec.retentionDays ?? 0,
+      publicAccess: restricted ? 'authenticated' : 'anyone',
+    })
+    await refresh()
     await copyLink(id, rec.shareSlug)
   }
 

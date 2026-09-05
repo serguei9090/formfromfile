@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -227,11 +228,21 @@ func (f *fixedWindow) allow(key string) bool {
 	return true
 }
 
+func (f *fixedWindow) reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.hits = map[string][]int64{}
+}
+
 var submitLimiter = &fixedWindow{hits: map[string][]int64{}, limit: 20, window: time.Minute}
 
 func clientIP(r *http.Request) string {
-	if r.RemoteAddr != "" {
+	if r.RemoteAddr == "" {
+		return "unknown"
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
 		return r.RemoteAddr
 	}
-	return "unknown"
+	return host
 }
