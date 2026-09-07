@@ -2,7 +2,14 @@
 
 > [!NOTE]
 > ### 🎓 Educational & Academic Research Notice
-> This project is a personal learning and portfolio project developed strictly for **educational purposes, academic research, and exploring emerging technical concepts** (AI systems, cloud infrastructure, SRE, and modern software architectures).
+> This project is engineered as a **personal learning sandbox and portfolio demonstration** exploring dynamic schema detection, form synthesis, and secure containerized architectures.
+> - **Status:** Personal Sandbox / Portfolio Showcase.
+> - **License:** Open source under the [MIT License](LICENSE). Free for community use, study, and contribution.
+> - **Warranty:** Provided AS-IS for educational exploration without commercial warranty.
+
+---
+
+
 >
 > - **Status:** Personal Sandbox / Portfolio Piece.
 > - **Terms of Use:** Free for personal exploration, educational study, and non-commercial research.
