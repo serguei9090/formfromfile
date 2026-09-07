@@ -1,5 +1,17 @@
 # FormFromFile
 
+> [!NOTE]
+> ### 🎓 Educational & Academic Research Notice
+> This project is a personal learning and portfolio project developed strictly for **educational purposes, academic research, and exploring emerging technical concepts** (AI systems, cloud infrastructure, SRE, and modern software architectures).
+>
+> - **Status:** Personal Sandbox / Portfolio Piece.
+> - **Terms of Use:** Free for personal exploration, educational study, and non-commercial research.
+> - **Production / Commercial Use:** For enterprise or commercial production usage, prior authorization and permission from the author are required.
+> - **Purpose:** Academic research, technical skill development, and architectural prototyping.
+
+---
+
+
 [![CI](https://github.com/serguei9090/formfromfile/actions/workflows/ci.yml/badge.svg)](https://github.com/serguei9090/formfromfile/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](server/go.mod)
